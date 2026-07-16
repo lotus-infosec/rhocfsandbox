@@ -1,0 +1,91 @@
+---
+import Layout from '../layouts/Layout.astro';
+---
+<Layout title="admin — rhocfsandbox" active="admin">
+  <h1><span class="prompt">sudo access-check</span></h1>
+
+  <p>
+    <span class="green">✓</span> if you're reading this,
+    <span class="accent">cloudflare access</span> let you through. it terminated
+    your tls at the edge, matched the <code>/admin</code> application,
+    evaluated the policy, and (if you weren't already authenticated) bounced
+    you through an identity provider before minting a signed jwt.
+  </p>
+
+  <h2># what access did before you got here</h2>
+  <ol style="padding-left:1.5rem;color:var(--fg-dim)">
+    <li>terminated your tls at the edge</li>
+    <li>matched hostname + path against the <code>/admin</code> application</li>
+    <li>evaluated the access policy (allow / block / bypass / require-mfa / …)</li>
+    <li>if unauthenticated: redirected to the configured idp (google, okta, one-time-pin, saml, …)</li>
+    <li>on successful auth: minted an rs256-signed jwt and set it as the <code>CF_Authorization</code> cookie</li>
+    <li>every subsequent request has that jwt re-validated at the edge before pages ever sees it</li>
+  </ol>
+
+  <h2># your access identity</h2>
+  <p class="dim">
+    this pages function reads the <code>CF_Authorization</code> cookie,
+    base64url-decodes the jwt, fetches the team's jwks from
+    <code>&lt;team&gt;.cloudflareaccess.com/cdn-cgi/access/certs</code>, and
+    verifies the rs256 signature against the kid — the same defense-in-depth
+    check an origin behind access would do.
+  </p>
+
+  <table class="kv" id="access-table">
+    <tr><td>loading…</td><td class="dim">fetching /api/access</td></tr>
+  </table>
+
+  <h2># why this pattern is useful</h2>
+  <ul class="plain">
+    <li>zero code changes on the origin — pages doesn't know or care about auth</li>
+    <li>works identically for a legacy on-prem app behind a tunnel, a saas app in casb, or a static site like this</li>
+    <li>the jwt is verifiable — any origin can validate it against cloudflare's public keys for defense-in-depth</li>
+    <li>you get session revocation, mfa enforcement, and posture checks without touching the app itself</li>
+  </ul>
+
+  <script is:inline>
+    (async () => {
+      const table = document.getElementById('access-table');
+      const fmtTime = (n) => {
+        if (typeof n !== 'number') return null;
+        const d = new Date(n * 1000);
+        return `${d.toISOString()} (${n})`;
+      };
+      try {
+        const res = await fetch('/api/access', { cache: 'no-store' });
+        const d = await res.json();
+        const rows = [
+          ['authenticated', d.authenticated ? 'yes' : 'no'],
+          ['cookie present', d.cookiePresent ? 'yes' : 'no'],
+          ['reason', d.reason],
+          ['email', d.email],
+          ['sub (user id)', d.sub],
+          ['identity nonce', d.identityNonce],
+          ['aud (application id)', Array.isArray(d.aud) ? d.aud.join(', ') : d.aud],
+          ['iss', d.iss],
+          ['team', d.team],
+          ['token type', d.type],
+          ['country (claim)', d.country_claim],
+          ['policy id', d.policyId],
+          ['iat', fmtTime(d.iat)],
+          ['nbf', fmtTime(d.nbf)],
+          ['exp', fmtTime(d.exp)],
+          ['time valid', d.timeValid === undefined ? null : (d.timeValid ? 'yes' : 'no')],
+          ['signature valid', d.signatureValid === undefined ? null : (d.signatureValid ? 'yes' : 'no')],
+          ['signature error', d.signatureError],
+          ['kid', d.kid],
+          ['alg', d.alg],
+          ['ray', d.ray],
+          ['colo', d.colo],
+          ['country (edge)', d.country],
+        ];
+        table.innerHTML = rows
+          .filter(([, v]) => v !== undefined && v !== null && v !== '')
+          .map(([k, v]) => `<tr><td>${k}</td><td>${String(v).replace(/</g,'&lt;')}</td></tr>`)
+          .join('');
+      } catch (err) {
+        table.innerHTML = `<tr><td class="red">error</td><td>${err.message}</td></tr>`;
+      }
+    })();
+  </script>
+</Layout>

@@ -1,0 +1,247 @@
+:root {
+  --bg: #0b0d10;
+  --bg-elev: #12151a;
+  --bg-hover: #1a1f26;
+  --border: #232a33;
+  --fg: #d7dbe0;
+  --fg-dim: #8a929c;
+  --fg-mute: #5a616b;
+  --accent: #f6821f;
+  --accent-dim: #b85f14;
+  --green: #6ee7a2;
+  --red: #ff6b6b;
+  --yellow: #ffd166;
+  --blue: #7bb4ff;
+  --mono: ui-monospace, "SF Mono", Menlo, Monaco, "Cascadia Mono", "Roboto Mono", Consolas, monospace;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body {
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--mono);
+  font-size: 14px;
+  line-height: 1.6;
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+}
+
+body {
+  padding: 2rem 1.5rem 4rem;
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+a {
+  color: var(--accent);
+  text-decoration: none;
+  border-bottom: 1px dashed transparent;
+  transition: border-color 0.12s ease;
+}
+
+a:hover {
+  border-bottom-color: var(--accent);
+}
+
+h1, h2, h3 {
+  font-weight: 600;
+  color: var(--fg);
+  margin-bottom: 0.75rem;
+}
+
+h1 { font-size: 1.4rem; }
+h2 { font-size: 1.15rem; margin-top: 2rem; color: var(--accent); }
+h3 { font-size: 1rem; margin-top: 1.25rem; color: var(--fg-dim); }
+
+p { margin-bottom: 0.75rem; }
+
+.prompt {
+  color: var(--green);
+}
+.prompt::before {
+  content: "$ ";
+  color: var(--fg-mute);
+}
+
+.dim { color: var(--fg-dim); }
+.mute { color: var(--fg-mute); }
+.accent { color: var(--accent); }
+.green { color: var(--green); }
+.red { color: var(--red); }
+.yellow { color: var(--yellow); }
+.blue { color: var(--blue); }
+
+header.site {
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 1rem;
+  margin-bottom: 2rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+header.site .brand {
+  font-weight: 600;
+  color: var(--fg);
+}
+
+header.site .brand .flag {
+  color: var(--accent);
+}
+
+nav.site {
+  display: flex;
+  gap: 1.25rem;
+  font-size: 0.9rem;
+}
+
+nav.site a {
+  color: var(--fg-dim);
+  border-bottom: none;
+}
+
+nav.site a:hover, nav.site a.active {
+  color: var(--accent);
+}
+
+footer.site {
+  margin-top: 4rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border);
+  color: var(--fg-mute);
+  font-size: 0.85rem;
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.card {
+  background: var(--bg-elev);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 1rem 1.25rem;
+  margin-bottom: 1rem;
+}
+
+.card:hover {
+  background: var(--bg-hover);
+}
+
+.card h3 {
+  margin-top: 0;
+  color: var(--fg);
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 1rem;
+}
+
+.badge {
+  display: inline-block;
+  padding: 0.1rem 0.5rem;
+  border-radius: 3px;
+  font-size: 0.75rem;
+  background: var(--bg-hover);
+  color: var(--fg-dim);
+  border: 1px solid var(--border);
+  margin-right: 0.35rem;
+}
+
+.badge.live { color: var(--green); border-color: var(--green); }
+.badge.warn { color: var(--yellow); border-color: var(--yellow); }
+.badge.info { color: var(--blue); border-color: var(--blue); }
+
+pre, code {
+  font-family: var(--mono);
+  background: var(--bg-elev);
+  color: var(--fg);
+  border-radius: 4px;
+}
+
+code {
+  padding: 0.1rem 0.35rem;
+  font-size: 0.85em;
+  border: 1px solid var(--border);
+}
+
+pre {
+  padding: 1rem;
+  overflow-x: auto;
+  border: 1px solid var(--border);
+  margin: 0.75rem 0;
+  font-size: 0.85rem;
+}
+
+pre code {
+  background: none;
+  border: none;
+  padding: 0;
+}
+
+table.kv {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0.5rem 0;
+  font-size: 0.9rem;
+}
+
+table.kv td {
+  padding: 0.35rem 0.75rem 0.35rem 0;
+  vertical-align: top;
+  border-bottom: 1px solid var(--border);
+}
+
+table.kv td:first-child {
+  color: var(--fg-dim);
+  width: 180px;
+  white-space: nowrap;
+}
+
+table.kv td:last-child {
+  color: var(--fg);
+  font-weight: 500;
+  word-break: break-word;
+}
+
+ul.plain {
+  list-style: none;
+  padding: 0;
+}
+
+ul.plain li {
+  padding: 0.25rem 0;
+  color: var(--fg);
+}
+
+ul.plain li::before {
+  content: "→ ";
+  color: var(--accent);
+  margin-right: 0.25rem;
+}
+
+.cursor::after {
+  content: "▊";
+  color: var(--accent);
+  animation: blink 1s step-end infinite;
+  margin-left: 0.15rem;
+}
+
+@keyframes blink {
+  50% { opacity: 0; }
+}
+
+@media (max-width: 600px) {
+  body { padding: 1rem; font-size: 13px; }
+  header.site { flex-direction: column; align-items: flex-start; }
+  table.kv td:first-child { width: 130px; }
+}

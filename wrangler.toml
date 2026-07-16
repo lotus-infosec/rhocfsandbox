@@ -1,0 +1,8 @@
+name = "rhocfsandbox"
+compatibility_date = "2026-07-01"
+pages_build_output_dir = "./dist"
+
+# Deploy with:
+#   npm run build && wrangler pages deploy ./dist --project-name=rhocfsandbox
+#
+# Or, if the project already exists and is Git-connected, just push.

@@ -1,0 +1,108 @@
+---
+import Layout from '../layouts/Layout.astro';
+---
+<Layout title="demos — rhocfsandbox" active="demos">
+  <h1><span class="prompt">ls /demos</span></h1>
+  <p class="dim">
+    a running catalog of live endpoints on this domain, organized by
+    cloudflare product area. built incrementally — anything not marked
+    <span class="badge live" style="margin:0">live</span> is on the shortlist
+    and will land here as it's built.
+  </p>
+
+  <h2># zero trust / cloudflare one</h2>
+  <div class="grid">
+    <a href="/admin/" class="card">
+      <h3>GET /admin <span class="badge live">live</span></h3>
+      <p class="dim">access-protected route. reach it from an unauthorized session and you'll be sent to the configured idp. once through, the page reflects your access identity back to you.</p>
+    </a>
+    <div class="card">
+      <h3>gateway http policy trigger <span class="badge info">coming soon</span></h3>
+      <p class="dim">endpoints that pair with a gateway http policy to demo block / isolate / override actions end-to-end.</p>
+    </div>
+    <div class="card">
+      <h3>dlp inspection target <span class="badge info">coming soon</span></h3>
+      <p class="dim">endpoints returning synthetic pii-shaped strings so dlp detectors have something to catch on egress.</p>
+    </div>
+    <div class="card">
+      <h3>warp / posture reflection <span class="badge info">coming soon</span></h3>
+      <p class="dim">a route that surfaces what warp + device posture are (or aren't) telling cloudflare about the request.</p>
+    </div>
+  </div>
+
+  <h2># application services</h2>
+  <div class="grid">
+    <div class="card">
+      <h3>waf managed rules <span class="badge info">coming soon</span></h3>
+      <p class="dim">endpoints crafted to trigger specific owasp / cloudflare managed rulesets so you can see the waf's decision live.</p>
+    </div>
+    <div class="card">
+      <h3>rate limiting <span class="badge info">coming soon</span></h3>
+      <p class="dim">a route with an intentionally aggressive rate limit configured, plus a small client to demonstrate the throttling behavior.</p>
+    </div>
+    <div class="card">
+      <h3>cache rules <span class="badge info">coming soon</span></h3>
+      <p class="dim">a set of routes with different cache behaviors — bypass, standard, cache-everything — plus headers showing the cache status.</p>
+    </div>
+    <div class="card">
+      <h3>bot management <span class="badge info">coming soon</span></h3>
+      <p class="dim">an endpoint that echoes cloudflare's bot score and verified-bot signals for the incoming request.</p>
+    </div>
+  </div>
+
+  <h2># developer platform</h2>
+  <div class="grid">
+    <div class="card">
+      <h3>workers ai inference <span class="badge info">coming soon</span></h3>
+      <p class="dim">a small worker calling workers ai to demo llm inference running at the edge.</p>
+    </div>
+    <div class="card">
+      <h3>d1 + kv sample <span class="badge info">coming soon</span></h3>
+      <p class="dim">a route backed by d1 and kv to show how storage primitives look from the pages / worker side.</p>
+    </div>
+    <div class="card">
+      <h3>durable objects counter <span class="badge info">coming soon</span></h3>
+      <p class="dim">a classic stateful counter demo to make durable objects feel concrete.</p>
+    </div>
+    <div class="card">
+      <h3>queues + workflows <span class="badge info">coming soon</span></h3>
+      <p class="dim">a small pipeline demonstrating how to fan work out over queues and coordinate multi-step jobs with workflows.</p>
+    </div>
+  </div>
+
+  <h2># ai</h2>
+  <div class="grid">
+    <div class="card">
+      <h3>ai gateway proxy <span class="badge info">coming soon</span></h3>
+      <p class="dim">a route that proxies through ai gateway to demonstrate caching, analytics, and guardrails on outbound ai calls.</p>
+    </div>
+    <div class="card">
+      <h3>vectorize search <span class="badge info">coming soon</span></h3>
+      <p class="dim">a tiny semantic-search endpoint backed by vectorize + workers ai embeddings.</p>
+    </div>
+  </div>
+
+  <h2># network services / magic</h2>
+  <div class="grid">
+    <div class="card">
+      <h3>magic wan reachability <span class="badge info">coming soon</span></h3>
+      <p class="dim">reference material on how magic wan connects sites and how policy flows through magic firewall.</p>
+    </div>
+    <div class="card">
+      <h3>tunnel private network <span class="badge info">coming soon</span></h3>
+      <p class="dim">a private hostname reachable only via cloudflare tunnel + warp — a working example of the private-app pattern.</p>
+    </div>
+  </div>
+
+  <h2># observability</h2>
+  <div class="grid">
+    <div class="card">
+      <h3>dex synthetic target <span class="badge info">coming soon</span></h3>
+      <p class="dim">a lightweight, dependable endpoint intended to be used as a target for digital experience monitoring tests.</p>
+    </div>
+    <div class="card">
+      <h3>logs / analytics demo <span class="badge info">coming soon</span></h3>
+      <p class="dim">a route paired with logpush / analytics engine samples so you can see the full observability picture.</p>
+    </div>
+  </div>
+</Layout>

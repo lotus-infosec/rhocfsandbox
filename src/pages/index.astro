@@ -1,0 +1,45 @@
+---
+import Layout from '../layouts/Layout.astro';
+---
+<Layout title="rhocfsandbox" active="home">
+  <h1><span class="prompt">whoami</span></h1>
+  <p>
+    <span class="accent">rhomanie "rho" taylor</span> — customer solutions
+    engineer at cloudflare. an all-around technical resource here to solve
+    real problems, translate engineer-speak into business outcomes, and make
+    sure the tech actually lands where it needs to.<span class="cursor"></span>
+  </p>
+  <p class="dim">
+    this domain is my live sandbox. every route on it is fronted by cloudflare
+    and intentionally wired up to demo real product behavior — access,
+    gateway, dlp, workers, pages functions, tunnels.
+  </p>
+
+  <h2># what lives here</h2>
+  <div class="grid">
+    <a href="/about/" class="card">
+      <h3>/about <span class="badge info">bio</span></h3>
+      <p class="dim">who i am, what the role covers, and a bit about how i got here.</p>
+    </a>
+    <a href="/demos/" class="card">
+      <h3>/demos <span class="badge live">live</span></h3>
+      <p class="dim">interactive endpoints that trip specific cloudflare features — a running catalog, more coming.</p>
+    </a>
+    <a href="/whoami/" class="card">
+      <h3>/whoami <span class="badge live">edge</span></h3>
+      <p class="dim">what cloudflare sees when you hit this site — ray id, colo, country, tls, asn. pulled live from the request.</p>
+    </a>
+    <a href="/admin/" class="card">
+      <h3>/admin <span class="badge warn">access-gated</span></h3>
+      <p class="dim">identity-aware proxy demo. gated by cloudflare access — unauthorized visitors get bounced to an idp.</p>
+    </a>
+  </div>
+
+  <h2># why this exists</h2>
+  <ul class="plain">
+    <li>real dns traffic to exercise gateway, waf, and analytics against something legitimate</li>
+    <li>a place to prototype policy patterns before proposing them to anyone</li>
+    <li>a live reference i can point visitors at instead of pasting screenshots</li>
+    <li>somewhere to break things on purpose in a space that's entirely my own</li>
+  </ul>
+</Layout>

@@ -1,0 +1,63 @@
+---
+import Layout from '../layouts/Layout.astro';
+---
+<Layout title="whoami — rhocfsandbox" active="whoami">
+  <h1><span class="prompt">whoami --verbose</span></h1>
+  <p class="dim">
+    this is what cloudflare sees when your request lands at the edge. data
+    pulled live from a pages function reading request headers + cf metadata.
+  </p>
+
+  <table class="kv" id="whoami-table">
+    <tr><td>loading…</td><td class="dim">fetching /api/whoami</td></tr>
+  </table>
+
+  <h2># raw json</h2>
+  <pre><code id="whoami-raw" class="dim">…</code></pre>
+
+  <h2># notes</h2>
+  <ul class="plain">
+    <li><strong>colo</strong> is the cloudflare data center handling your request — usually the closest one, but not always (anycast routing, congestion, warp path)</li>
+    <li><strong>country / asn</strong> are geoip / bgp lookups on your source ip. if you're on warp, expect to see the warp egress path, not your local isp</li>
+    <li><strong>tls_version</strong> reflects the handshake between your client and cloudflare — nothing about origin tls</li>
+    <li><strong>cf-connecting-ip</strong> is your real client ip as cloudflare sees it. this is what origin servers get in that header behind cloudflare</li>
+  </ul>
+
+  <script is:inline>
+    (async () => {
+      const table = document.getElementById('whoami-table');
+      const raw = document.getElementById('whoami-raw');
+      try {
+        const res = await fetch('/api/whoami', { cache: 'no-store' });
+        if (!res.ok) throw new Error('http ' + res.status);
+        const data = await res.json();
+        raw.textContent = JSON.stringify(data, null, 2);
+        const rows = [
+          ['cf-ray', data.ray],
+          ['colo', data.colo],
+          ['country', data.country],
+          ['region', data.region],
+          ['city', data.city],
+          ['postal', data.postalCode],
+          ['asn', data.asn],
+          ['as org', data.asOrganization],
+          ['client ip', data.ip],
+          ['ip version', data.ipVersion],
+          ['tls version', data.tlsVersion],
+          ['tls cipher', data.tlsCipher],
+          ['http protocol', data.httpProtocol],
+          ['user agent', data.userAgent],
+          ['warp?', data.isWarp ? 'yes' : 'no'],
+          ['timestamp', data.timestamp],
+        ];
+        table.innerHTML = rows
+          .filter(([, v]) => v !== undefined && v !== null && v !== '')
+          .map(([k, v]) => `<tr><td>${k}</td><td>${String(v).replace(/</g,'&lt;')}</td></tr>`)
+          .join('');
+      } catch (err) {
+        table.innerHTML = `<tr><td class="red">error</td><td>${err.message}</td></tr>`;
+        raw.textContent = 'error: ' + err.message;
+      }
+    })();
+  </script>
+</Layout>

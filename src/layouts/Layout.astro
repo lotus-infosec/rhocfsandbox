@@ -1,0 +1,71 @@
+---
+import '../styles/global.css';
+
+interface Props {
+  title: string;
+  description?: string;
+  active?: string;
+}
+
+const { title, description = "Cloudflare sandbox — Rhomanie \"Rho\" Taylor, CSE @ Cloudflare", active } = Astro.props;
+---
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="generator" content={Astro.generator} />
+  <meta name="description" content={description} />
+  <meta name="robots" content="index,follow" />
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+  <meta property="og:title" content={title} />
+  <meta property="og:description" content={description} />
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://rhocfsandbox.com" />
+  <title>{title}</title>
+</head>
+<body>
+  <header class="site">
+    <div class="brand">
+      <span class="flag">▲</span> rhocfsandbox<span class="mute">.com</span>
+    </div>
+    <nav class="site">
+      <a href="/" class={active === 'home' ? 'active' : ''}>~</a>
+      <a href="/about/" class={active === 'about' ? 'active' : ''}>about</a>
+      <a href="/demos/" class={active === 'demos' ? 'active' : ''}>demos</a>
+      <a href="/whoami/" class={active === 'whoami' ? 'active' : ''}>whoami</a>
+      <a href="/admin/" class={active === 'admin' ? 'active' : ''}>admin</a>
+    </nav>
+  </header>
+
+  <main>
+    <slot />
+  </main>
+
+  <footer class="site">
+    <div>
+      <span class="mute">served by</span>
+      <span class="accent">cloudflare pages</span>
+      <span class="mute">·</span>
+      <span class="mute">edge:</span>
+      <span id="cf-colo" class="dim">…</span>
+    </div>
+    <div>
+      <span class="mute">rhomanie "rho" taylor · cse @ cloudflare</span>
+    </div>
+  </footer>
+
+  <script>
+    // Pull colo from the whoami endpoint for the footer.
+    fetch('/api/whoami')
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        if (data && data.colo) {
+          const el = document.getElementById('cf-colo');
+          if (el) el.textContent = data.colo;
+        }
+      })
+      .catch(() => {});
+  </script>
+</body>
+</html>
