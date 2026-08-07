@@ -1,0 +1,89 @@
+---
+import Layout from '../../layouts/Layout.astro';
+---
+<Layout title="api-shield/schema — rhocfsandbox" active="demos">
+  <h1><span class="prompt">demo: api shield → schema validation</span></h1>
+  <p class="dim">
+    <code>GET /api/shield-schema</code> requires a query parameter
+    <code>id</code> with OpenAPI format <code>uuid</code>. api shield
+    enforces this at the edge. valid uuid → 200 with echoed id. missing or
+    non-uuid → 403 from api shield, function never runs.
+  </p>
+
+  <div class="btn-row">
+    <button class="demo" data-id="valid" data-label="valid uuid">valid uuid</button>
+    <button class="demo danger" data-id="missing" data-label="missing id">missing id</button>
+    <button class="demo danger" data-id="notauuid" data-label="not a uuid">not a uuid (id=hello)</button>
+    <button class="demo danger" data-id="wrongshape" data-label="wrong shape">wrong shape (id=123-45-6)</button>
+  </div>
+  <div class="log-out" id="log-out"><span class="dim">click a button…</span></div>
+
+  <h2># from your terminal</h2>
+  <pre><code>{`# valid → 200
+curl -s "https://rhocfsandbox.com/api/shield-schema?id=$(uuidgen)"
+
+# invalid → 403 (from api shield, not the function)
+curl -si "https://rhocfsandbox.com/api/shield-schema?id=hello" | head -1
+curl -si "https://rhocfsandbox.com/api/shield-schema" | head -1`}</code></pre>
+
+  <h2># the schema</h2>
+  <pre><code>{`openapi: "3.0.3"
+info: { title: "rhocfsandbox demo schema", version: "1.0" }
+servers: [{ url: "https://rhocfsandbox.com" }]
+paths:
+  /api/shield-schema:
+    get:
+      parameters:
+        - name: id
+          in: query
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200": { description: OK }`}</code></pre>
+
+  <table class="kv">
+    <tr><td>schema name</td><td><code>SITE_api_shield_schema</code></td></tr>
+    <tr><td>operation</td><td><code>GET rhocfsandbox.com /api/shield-schema</code></td></tr>
+    <tr><td>mitigation action</td><td><code>block</code> (403 from api shield)</td></tr>
+  </table>
+
+  <script>
+    const out = document.getElementById('log-out');
+    document.querySelectorAll('button.demo[data-id]').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const kind = btn.getAttribute('data-id');
+        const label = btn.getAttribute('data-label');
+        let url = '/api/shield-schema';
+        if (kind === 'valid') url += '?id=' + crypto.randomUUID();
+        else if (kind === 'notauuid') url += '?id=hello';
+        else if (kind === 'wrongshape') url += '?id=123-45-6';
+        // 'missing' has no query
+        out.innerHTML = `<span class="dim">requesting ${label}...</span>`;
+        try {
+          const t0 = performance.now();
+          const res = await fetch(url, { cache: 'no-store' });
+          const ms = Math.round(performance.now() - t0);
+          const cls = res.ok ? 'ok' : 'err';
+          const ray = res.headers.get('cf-ray') || 'n/a';
+          const mit = res.headers.get('cf-mitigated') || 'none';
+          let bodyBits = '';
+          try {
+            const j = await res.json();
+            bodyBits = `<div class="line dim">body: ${JSON.stringify(j).slice(0, 200)}</div>`;
+          } catch {
+            bodyBits = '<div class="line dim">body: (non-json — likely api shield block page)</div>';
+          }
+          out.innerHTML = `
+            <div class="line ${cls}">${label} → status ${res.status} ${res.statusText}</div>
+            <div class="line">cf-ray: ${ray}</div>
+            <div class="line">cf-mitigated: ${mit}</div>
+            ${bodyBits}
+            <div class="line dim">round trip: ${ms}ms · url: ${url}</div>
+          `;
+        } catch (e) {
+          out.innerHTML = `<div class="line err">fetch failed: ${e.message}</div>`;
+        }
+      });
+    });
+  </script>
+</Layout>

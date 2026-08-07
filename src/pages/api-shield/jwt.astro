@@ -1,0 +1,124 @@
+---
+import Layout from '../../layouts/Layout.astro';
+---
+<Layout title="api-shield/jwt — rhocfsandbox" active="demos">
+  <h1><span class="prompt">demo: api shield → jwt validation</span></h1>
+  <p class="dim">
+    <code>GET /api/shield-jwt</code> is protected by api shield's jwt
+    validation. api shield fetches the site's jwks at
+    <a href="/.well-known/jwks.json"><code>/.well-known/jwks.json</code></a>
+    and validates every request's <code>Authorization: Bearer</code> header
+    against it. valid, unexpired, correctly-signed → 200. missing, expired,
+    or tampered → 403 from api shield, function never runs.
+  </p>
+
+  <h2># mint a token</h2>
+  <div class="btn-row">
+    <button class="demo" data-mint="valid">mint a valid jwt (5min)</button>
+    <button class="demo warn" data-mint="expired">mint an expired jwt</button>
+    <button class="demo warn" data-mint="short">mint a very short-lived jwt (5s)</button>
+  </div>
+  <div class="log-out" id="mint-out"><span class="dim">click to mint…</span></div>
+
+  <h2># call the protected endpoint</h2>
+  <div class="btn-row">
+    <button class="demo" data-call="valid">call with last-minted jwt</button>
+    <button class="demo danger" data-call="none">call with no jwt</button>
+    <button class="demo danger" data-call="tampered">call with tampered jwt</button>
+    <button class="demo danger" data-call="malformed">call with malformed jwt</button>
+  </div>
+  <div class="log-out" id="call-out"><span class="dim">mint a jwt first, then call…</span></div>
+
+  <h2># from your terminal</h2>
+  <pre><code>{`# mint
+JWT=$(curl -s "https://rhocfsandbox.com/api/get-demo-jwt?exp=300" | jq -r .jwt)
+
+# valid → 200
+curl -si "https://rhocfsandbox.com/api/shield-jwt" -H "Authorization: Bearer $JWT" | head -1
+
+# no token → 403 (or 400 depending on rule config)
+curl -si "https://rhocfsandbox.com/api/shield-jwt" | head -1
+
+# tampered → 403
+curl -si "https://rhocfsandbox.com/api/shield-jwt" -H "Authorization: Bearer $\{JWT}xxx" | head -1`}</code></pre>
+
+  <h2># config</h2>
+  <table class="kv">
+    <tr><td>algorithm</td><td>RS256 · 2048-bit RSA</td></tr>
+    <tr><td>kid</td><td><code>site-jwt-2026-08-07</code></td></tr>
+    <tr><td>issuer</td><td><code>https://rhocfsandbox.com</code></td></tr>
+    <tr><td>audience</td><td><code>rhocfsandbox-demo</code></td></tr>
+    <tr><td>jwks endpoint</td><td><code>/.well-known/jwks.json</code></td></tr>
+    <tr><td>token config</td><td><code>SITE_api_shield_jwt</code> · location: <code>Authorization</code> header</td></tr>
+    <tr><td>validation rule</td><td><code>SITE_api_shield_jwt_rule</code> · action: block on non-compliant</td></tr>
+  </table>
+
+  <script>
+    let lastJwt = null;
+    const mintOut = document.getElementById('mint-out');
+    const callOut = document.getElementById('call-out');
+
+    document.querySelectorAll('button.demo[data-mint]').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const kind = btn.getAttribute('data-mint');
+        let url = '/api/get-demo-jwt?';
+        if (kind === 'valid') url += 'exp=300';
+        else if (kind === 'expired') url += 'exp=-1';
+        else if (kind === 'short') url += 'exp=5';
+        mintOut.innerHTML = '<span class="dim">minting...</span>';
+        try {
+          const res = await fetch(url, { cache: 'no-store' });
+          const j = await res.json();
+          lastJwt = j.jwt;
+          const exp = new Date(j.payload.exp * 1000).toISOString();
+          mintOut.innerHTML = `
+            <div class="line ok">minted (kind=${kind})</div>
+            <div class="line dim">exp: ${exp}</div>
+            <div class="line dim">jti: ${j.payload.jti}</div>
+            <div class="line" style="word-break:break-all">jwt: ${j.jwt.slice(0, 80)}...</div>
+          `;
+        } catch (e) {
+          mintOut.innerHTML = `<div class="line err">${e.message}</div>`;
+        }
+      });
+    });
+
+    document.querySelectorAll('button.demo[data-call]').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const kind = btn.getAttribute('data-call');
+        const headers = {};
+        if (kind === 'valid' && lastJwt) headers['authorization'] = 'Bearer ' + lastJwt;
+        else if (kind === 'valid') { callOut.innerHTML = '<div class="line err">mint a jwt first</div>'; return; }
+        else if (kind === 'tampered' && lastJwt) headers['authorization'] = 'Bearer ' + lastJwt + 'xxxxx';
+        else if (kind === 'tampered') { callOut.innerHTML = '<div class="line err">mint a jwt first, then tamper</div>'; return; }
+        else if (kind === 'malformed') headers['authorization'] = 'Bearer not-a-jwt-at-all';
+        // 'none' sends no header
+        callOut.innerHTML = '<span class="dim">calling /api/shield-jwt...</span>';
+        try {
+          const t0 = performance.now();
+          const res = await fetch('/api/shield-jwt', { headers, cache: 'no-store' });
+          const ms = Math.round(performance.now() - t0);
+          const cls = res.ok ? 'ok' : 'err';
+          const ray = res.headers.get('cf-ray') || 'n/a';
+          const mit = res.headers.get('cf-mitigated') || 'none';
+          let bodyBits = '';
+          try {
+            const j = await res.json();
+            bodyBits = `<div class="line dim">body: ${JSON.stringify(j).slice(0, 200)}</div>`;
+          } catch {
+            bodyBits = '<div class="line dim">body: (non-json — likely api shield block page)</div>';
+          }
+          callOut.innerHTML = `
+            <div class="line ${cls}">${kind} → ${res.status} ${res.statusText}</div>
+            <div class="line">cf-ray: ${ray}</div>
+            <div class="line">cf-mitigated: ${mit}</div>
+            ${bodyBits}
+            <div class="line dim">${ms}ms</div>
+          `;
+        } catch (e) {
+          callOut.innerHTML = `<div class="line err">${e.message}</div>`;
+        }
+      });
+    });
+  </script>
+</Layout>

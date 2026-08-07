@@ -1,0 +1,40 @@
+---
+import Layout from '../layouts/Layout.astro';
+---
+<Layout title="api-shield — rhocfsandbox" active="demos">
+  <h1><span class="prompt">demo: api shield</span></h1>
+  <p class="dim">
+    two api shield demos. schema validation catches malformed or unexpected
+    query parameters before they hit your function. jwt validation catches
+    missing / tampered / expired tokens before they hit your function. both
+    run at cloudflare's edge — the pages functions on the other side never
+    execute for invalid requests.
+  </p>
+
+  <h2># pick a demo</h2>
+  <div class="grid">
+    <a href="/api-shield/schema/" class="card">
+      <h3>schema validation</h3>
+      <p class="dim">openapi schema requiring <code>?id=&lt;uuid&gt;</code>. non-uuid ids return 403 from api shield without touching the function.</p>
+    </a>
+    <a href="/api-shield/jwt/" class="card">
+      <h3>jwt validation</h3>
+      <p class="dim">mint an rs256 token from <code>/api/get-demo-jwt</code>, call <code>/api/shield-jwt</code> with valid / expired / missing / tampered tokens. api shield validates signature + exp + nbf against the site's jwks.</p>
+    </a>
+  </div>
+
+  <h2># how it works together</h2>
+  <ol>
+    <li>you upload (or discover) an openapi schema in api shield</li>
+    <li>each path in the schema becomes an <em>operation</em> in endpoint management</li>
+    <li>you attach protections to operations: schema validation, jwt validation, rate limiting, sequence detection</li>
+    <li>edge nodes evaluate protections before your origin (or pages function) runs</li>
+  </ol>
+
+  <h2># jwks</h2>
+  <p class="dim">
+    the site publishes its jwt signing key at <a href="/.well-known/jwks.json"><code>/.well-known/jwks.json</code></a>.
+    api shield's token validation config fetches from that url to know which
+    signatures to accept.
+  </p>
+</Layout>
