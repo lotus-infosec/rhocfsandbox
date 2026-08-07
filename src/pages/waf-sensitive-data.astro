@@ -2,36 +2,50 @@
 import Layout from '../layouts/Layout.astro';
 ---
 <Layout title="waf-sensitive-data — rhocfsandbox" active="demos">
-  <h1><span class="prompt">demo: sensitive data detection (sdd)</span></h1>
+  <h1><span class="prompt">demo: sensitive data detection + waf block</span></h1>
   <p class="dim">
-    two path prefixes, same synthetic payloads, different waf actions. cloudflare
-    inspects response bodies at egress against the sensitive data managed ruleset
-    (ssn, credit card, api key, email, phone), then either logs a finding or
-    blocks the response. all values below are synthetic — reserved-invalid or
+    two path prefixes, same synthetic payloads, two different products. the log
+    prefix demonstrates cloudflare sensitive data detection (sdd) inspecting
+    response bodies. the block prefix demonstrates a waf custom rule stopping
+    the request outright. all payloads are synthetic — reserved-invalid or
     industry test values.
   </p>
 
-  <h2># log endpoints</h2>
+  <div class="callout info">
+    <strong>real product knowledge:</strong> sdd is a monitoring product. it
+    inspects egress response bodies and records findings in security events,
+    but its rule action is <code>log</code> only — the cloudflare-managed
+    ruleset does not support block as an override. for actual blocking of
+    sensitive data leaving your origin, you pair sdd (for detection and
+    reporting) with either a waf custom rule (request-side) or zero trust dlp
+    (for warp-tunneled traffic). the two paths below show one detect + one
+    block pattern side-by-side.
+  </div>
+
+  <h2># log endpoints — sdd detects on response</h2>
   <p class="dim">
-    return the payload, sdd matches, finding shows up in security events. no
-    visible impact to the client.
+    each endpoint returns synthetic pii of the requested type. request reaches
+    the origin function, function returns the payload, sdd inspects the
+    response, finding shows up in cloudflare security events. no visible
+    impact to the client — the response body is delivered unchanged.
   </p>
   <div class="grid">
     <a href="/api/sensitive-log/ssn" class="card"><h3>GET /api/sensitive-log/ssn</h3><p class="dim">synthetic ssn (reserved-invalid <code>000-xx</code> range)</p></a>
     <a href="/api/sensitive-log/cc" class="card"><h3>GET /api/sensitive-log/cc</h3><p class="dim">industry test visa <code>4111 1111 1111 1111</code></p></a>
-    <a href="/api/sensitive-log/email" class="card"><h3>GET /api/sensitive-log/email</h3><p class="dim">example.com address</p></a>
+    <a href="/api/sensitive-log/email" class="card"><h3>GET /api/sensitive-log/email</h3><p class="dim">example.com address per rfc 2606</p></a>
     <a href="/api/sensitive-log/phone" class="card"><h3>GET /api/sensitive-log/phone</h3><p class="dim">reserved <code>555-01xx</code> range</p></a>
     <a href="/api/sensitive-log/apikey" class="card"><h3>GET /api/sensitive-log/apikey</h3><p class="dim">plausibly-shaped fake token</p></a>
   </div>
 
-  <h2># block endpoints</h2>
+  <h2># block endpoints — waf stops the request</h2>
   <p class="dim">
-    same payloads, but the sdd rule action here is <code>block</code>. the origin
-    function still runs, cloudflare inspects the response, matches the detector,
-    and replaces the body with a block page before it leaves the edge.
+    a waf custom rule matches the path and returns a branded 403 response.
+    the origin function never runs. this is the mechanism you'd use if you
+    knew a route was leaking and needed to shut it down immediately while
+    fixing the origin.
   </p>
   <div class="grid">
-    <a href="/api/sensitive-block/ssn" class="card"><h3>GET /api/sensitive-block/ssn</h3><p class="dim">expect <code>403</code></p></a>
+    <a href="/api/sensitive-block/ssn" class="card"><h3>GET /api/sensitive-block/ssn</h3><p class="dim">expect <code>403</code> with branded block page</p></a>
     <a href="/api/sensitive-block/cc" class="card"><h3>GET /api/sensitive-block/cc</h3><p class="dim">expect <code>403</code></p></a>
     <a href="/api/sensitive-block/email" class="card"><h3>GET /api/sensitive-block/email</h3><p class="dim">expect <code>403</code></p></a>
     <a href="/api/sensitive-block/phone" class="card"><h3>GET /api/sensitive-block/phone</h3><p class="dim">expect <code>403</code></p></a>
@@ -39,23 +53,33 @@ import Layout from '../layouts/Layout.astro';
   </div>
 
   <h2># from curl</h2>
-  <pre><code># log path — should return 200 with the synthetic payload
+  <pre><code># log path — 200 with the synthetic payload; sdd records a finding server-side
 curl -i https://rhocfsandbox.com/api/sensitive-log/cc
 
-# block path — should return 403 with cloudflare's block body
+# block path — 403 with branded block body; origin never touched
 curl -i https://rhocfsandbox.com/api/sensitive-block/cc</code></pre>
+
+  <h2># what's the config</h2>
+  <table class="kv">
+    <tr><td>sdd deployment</td><td><code>SITE_sdd_log</code> in http_response_firewall_managed phase, expression <code>path wildcard "/api/sensitive-log/*"</code></td></tr>
+    <tr><td>sdd action</td><td>log (cloudflare-managed ruleset limitation — no block override supported)</td></tr>
+    <tr><td>waf block</td><td><code>SITE_sensitive_block_request</code> in http_request_firewall_custom phase, expression <code>path wildcard "/api/sensitive-block/*"</code>, action = block with branded response</td></tr>
+  </table>
 
   <h2># where to look on the cloudflare side</h2>
   <ul class="plain">
-    <li><strong>security → security events</strong>: filter by ruleset "sensitive data detection"</li>
-    <li><strong>security → wAF → managed rulesets</strong>: deployment overrides for log vs block</li>
-    <li><strong>analytics → security analytics</strong>: sdd findings show up as a category</li>
+    <li><strong>security → events</strong>: filter by ruleset "sensitive data detection" — sdd findings from the log path</li>
+    <li><strong>security → analytics</strong>: sdd shows up as a distinct category over time</li>
+    <li><strong>security → waf → managed rulesets</strong>: sdd deployment settings</li>
+    <li><strong>security → waf → custom rules</strong>: <code>SITE_sensitive_block_request</code> shows request-side blocks</li>
   </ul>
 
   <div class="callout chill">
-    <strong>the talking point:</strong> sdd is body inspection at egress. same
-    engine as zero trust dlp, but applied to public web responses instead of
-    warp-tunneled traffic. useful when your api accidentally returns pii, or
-    when a compromised endpoint starts leaking.
+    <strong>the talking point:</strong> most customers hear "sensitive data
+    detection" and assume it can block. it can't, by design — cloudflare wants
+    detection to be safe to enable everywhere without breaking traffic. blocking
+    is a deliberate second choice you make with a waf rule (for public web) or
+    zero trust dlp (for warp-tunneled traffic to saas). knowing this distinction
+    saves customers a config surprise later.
   </div>
 </Layout>
