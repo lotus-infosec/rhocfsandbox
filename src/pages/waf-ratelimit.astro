@@ -30,14 +30,6 @@ done`}</code></pre>
     <tr><td>action</td><td>block · custom html response (429)</td></tr>
   </table>
 
-  <div class="callout chill">
-    <strong>the talking point:</strong> advanced rate limiting can key on almost
-    any request signal — ip, header value, session cookie, jwt claim, path
-    variable. combine multiple to differentiate real users from abusive scripts,
-    e.g. rate limit per <code>user id</code> instead of per ip so shared
-    corporate outbound ips don't false-positive.
-  </div>
-
   <script>
     const btn = document.getElementById('hammer');
     const clr = document.getElementById('clear');

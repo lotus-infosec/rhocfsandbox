@@ -6,9 +6,9 @@ import Layout from '../layouts/Layout.astro';
   <p class="dim">
     one waf rule, three ways to trigger it. matches on either
     <code>user-agent contains "sqlmap"</code> or a custom
-    <code>x-test-bot: sqlmap</code> header — because browsers refuse to let
-    javascript spoof user-agent (real security constraint, worth noting to
-    your visitor).
+    <code>x-test-bot: sqlmap</code> header — browsers refuse to let javascript
+    spoof user-agent, so the alternate header is provided for the in-browser
+    fetch demo.
   </p>
 
   <h2># method 1: curl (any terminal)</h2>
@@ -42,13 +42,6 @@ curl -i -H "x-test-bot: sqlmap" "https://rhocfsandbox.com/waf-ua"</code></pre>
     <tr><td>expression</td><td><code>http.request.uri.path eq "/waf-ua" and (lower(http.user_agent) contains "sqlmap" or any(http.request.headers["x-test-bot"][*] contains "sqlmap"))</code></td></tr>
     <tr><td>action</td><td>block · custom html response (403)</td></tr>
   </table>
-
-  <div class="callout chill">
-    <strong>the talking point:</strong> attackers spoof user-agent trivially. the
-    waf's real value is stacking signals — ua + ip reputation + bot score + tls
-    fingerprint + request cadence — and acting on the composite. this demo shows
-    the mechanics; production rules combine multiple facets.
-  </div>
 
   <script>
     const btn = document.getElementById('fetch-btn');

@@ -29,10 +29,4 @@ import Layout from '../layouts/Layout.astro';
     <tr><td>action</td><td>block · custom html response (403)</td></tr>
   </table>
 
-  <div class="callout chill">
-    <strong>the talking point:</strong> cloudflare's waf can match on any request property
-    (path, query, header, method, geo, asn, tls fingerprint, bot score). here we used
-    a query string for demo convenience. in the real world you'd match on threat
-    indicators (payloads, malicious ips, known-bad user agents, rate anomalies).
-  </div>
 </Layout>

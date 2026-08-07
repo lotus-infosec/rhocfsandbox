@@ -11,17 +11,6 @@ import Layout from '../layouts/Layout.astro';
     industry test values.
   </p>
 
-  <div class="callout info">
-    <strong>real product knowledge:</strong> sdd is a monitoring product. it
-    inspects egress response bodies and records findings in security events,
-    but its rule action is <code>log</code> only — the cloudflare-managed
-    ruleset does not support block as an override. for actual blocking of
-    sensitive data leaving your origin, you pair sdd (for detection and
-    reporting) with either a waf custom rule (request-side) or zero trust dlp
-    (for warp-tunneled traffic). the two paths below show one detect + one
-    block pattern side-by-side.
-  </div>
-
   <h2># log endpoints — sdd detects on response</h2>
   <p class="dim">
     each endpoint returns synthetic pii of the requested type. request reaches
@@ -74,12 +63,4 @@ curl -i https://rhocfsandbox.com/api/sensitive-block/cc</code></pre>
     <li><strong>security → waf → custom rules</strong>: <code>SITE_sensitive_block_request</code> shows request-side blocks</li>
   </ul>
 
-  <div class="callout chill">
-    <strong>the talking point:</strong> most customers hear "sensitive data
-    detection" and assume it can block. it can't, by design — cloudflare wants
-    detection to be safe to enable everywhere without breaking traffic. blocking
-    is a deliberate second choice you make with a waf rule (for public web) or
-    zero trust dlp (for warp-tunneled traffic to saas). knowing this distinction
-    saves customers a config surprise later.
-  </div>
 </Layout>

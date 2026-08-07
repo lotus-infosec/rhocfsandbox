@@ -14,7 +14,7 @@ import Layout from '../layouts/Layout.astro';
     <a href="/api/deny-401" class="card"><h3>401 unauthorized</h3><p class="dim">served by a pages function. imagine an authenticated api rejecting a missing token.</p></a>
     <a href="/api/deny-403" class="card"><h3>403 forbidden</h3><p class="dim">served by a pages function. imagine an authorization check failing.</p></a>
     <a href="/definitely-not-a-real-path" class="card"><h3>404 not found</h3><p class="dim">served by astro's built-in 404 slot on any unknown path.</p></a>
-    <a href="/waf-ratelimit" class="card"><h3>429 too many requests</h3><p class="dim">served by cloudflare's edge when rate limit fires. see the dedicated demo.</p></a>
+    <a href="/api/deny-429" class="card"><h3>429 too many requests</h3><p class="dim">served by a pages function. static preview of the 429 experience. to see it fire from cloudflare's edge, go hammer <code>/waf-ratelimit</code>.</p></a>
     <a href="/waf-block-me?trigger=please" class="card"><h3>403 waf block</h3><p class="dim">served by cloudflare's edge on a waf custom rule. same aesthetic, different origin.</p></a>
   </div>
 
