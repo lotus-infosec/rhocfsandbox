@@ -1,0 +1,63 @@
+---
+import Layout from '../layouts/Layout.astro';
+---
+<Layout title="page-shield — rhocfsandbox" active="demos">
+  <h1><span class="prompt">demo: page shield — client-side script visibility + csp</span></h1>
+  <p class="dim">
+    page shield watches the third-party scripts your visitors' browsers
+    actually load, and reports them back to cloudflare. it's the answer to
+    "what javascript is running in my users' browsers, and did any of it
+    change without my knowledge." also generates a recommended csp based on
+    observed real traffic.
+  </p>
+
+  <h2># scripts loaded on this page</h2>
+  <p class="dim">
+    to give page shield something to see, this page loads a tiny script
+    from <code>cdn.jsdelivr.net</code>. it doesn't do anything, it just
+    exists so it shows up in the page shield inventory.
+  </p>
+  <div class="log-out" id="log-out"><span class="dim">script status: loading...</span></div>
+
+  <h2># where to look</h2>
+  <table class="kv">
+    <tr><td>page shield status</td><td>enabled zone-wide · uses cloudflare reporting endpoint</td></tr>
+    <tr><td>dashboard path</td><td>zone → security → page shield → scripts</td></tr>
+    <tr><td>expected findings</td><td>after some real visits: <code>challenges.cloudflare.com</code>, <code>cdn.jsdelivr.net</code>, any inline scripts</td></tr>
+  </table>
+
+  <h2># csp policy recommendation</h2>
+  <p class="dim">
+    page shield builds a candidate content-security-policy based on what it
+    has actually observed loading. dashboard path: zone → security → page
+    shield → policies → suggested policies. you copy the recommended csp
+    into a response-header transform rule and deploy.
+  </p>
+  <p class="dim">
+    the "sales value" is that page shield removes the guesswork from csp —
+    you don't have to enumerate every third-party script by hand and then
+    play whack-a-mole with report-only mode.
+  </p>
+
+  <h2># what real traffic reveals</h2>
+  <ul>
+    <li>every script src, inline script, and their hashes</li>
+    <li>whether a script changed between visits (magecart / supply-chain signal)</li>
+    <li>connections initiated by scripts (fetch, xhr, websocket endpoints)</li>
+    <li>page shield alerts you can pipe into slack / pagerduty</li>
+  </ul>
+
+  <div id="loaded-marker"></div>
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js" defer></script>
+  <script>
+    // Non-functional; this just proves the third-party script arrived.
+    // Page Shield will observe the script src regardless of whether we execute it.
+    const out = document.getElementById('log-out');
+    window.addEventListener('load', () => {
+      const has = typeof window.confetti === 'function';
+      out.innerHTML = has
+        ? '<div class="line ok">✓ cdn.jsdelivr.net script loaded and executed (window.confetti is a function)</div><div class="line dim">page shield should see this script src within a few minutes of real traffic on this page.</div>'
+        : '<div class="line err">script did not load (adblocker? offline?)</div>';
+    });
+  </script>
+</Layout>

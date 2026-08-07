@@ -1,0 +1,69 @@
+---
+import Layout from '../layouts/Layout.astro';
+---
+<Layout title="cache-hit — rhocfsandbox" active="demos">
+  <h1><span class="prompt">demo: cache MISS → HIT</span></h1>
+  <p class="dim">
+    a cloudflare cache rule caches <code>/api/cache-hit</code> at the edge
+    for 300 seconds. the button below fetches it three times back-to-back
+    and shows the <code>cf-cache-status</code> header for each. cold cache
+    the first request is a MISS (the function runs). the next two should
+    be HIT (served from the requester's colo without touching the function).
+  </p>
+
+  <div class="btn-row">
+    <button class="demo" id="fetch-btn">fetch 3× and show cf-cache-status</button>
+    <button class="demo warn" id="cache-bust-btn">fetch 1× with cache-buster (always MISS)</button>
+  </div>
+  <div class="log-out" id="log-out"><span class="dim">click a button…</span></div>
+
+  <h2># try from your terminal</h2>
+  <pre><code>{`curl -sI "https://rhocfsandbox.com/api/cache-hit" | grep -iE "cf-cache-status|age|cache-tag"
+
+# repeat within 5min: expect MISS, then HIT
+for i in 1 2 3; do
+  curl -sI "https://rhocfsandbox.com/api/cache-hit" | grep -i cf-cache-status
+done`}</code></pre>
+
+  <h2># what's the rule</h2>
+  <table class="kv">
+    <tr><td>rule name</td><td><code>SITE_cache_hit_ttl</code></td></tr>
+    <tr><td>expression</td><td><code>http.request.uri.path eq "/api/cache-hit"</code></td></tr>
+    <tr><td>action</td><td>set_cache_settings · cache = eligible · edge TTL 300s · browser TTL 30s</td></tr>
+    <tr><td>cache-tag</td><td><code>SITE_cache_demo</code> (attached by the function; enables purge-by-tag)</td></tr>
+  </table>
+
+  <script>
+    const btn = document.getElementById('fetch-btn');
+    const bustBtn = document.getElementById('cache-bust-btn');
+    const out = document.getElementById('log-out');
+
+    async function fetchOnce(url, label) {
+      const t0 = performance.now();
+      const res = await fetch(url, { cache: 'no-store' });
+      const ms = Math.round(performance.now() - t0);
+      const status = res.headers.get('cf-cache-status') || 'n/a';
+      const age = res.headers.get('age') || 'n/a';
+      const j = await res.json();
+      const cls = status === 'HIT' ? 'ok' : (status === 'MISS' ? 'warn' : 'err');
+      return `<div class="line ${cls}">${label}: cf-cache-status=${status} · age=${age}s · generatedAt=${j.generatedAt} · ${ms}ms</div>`;
+    }
+
+    btn.addEventListener('click', async () => {
+      out.innerHTML = '<span class="dim">firing 3 requests...</span>';
+      const rows = [];
+      for (let i = 1; i <= 3; i++) {
+        try { rows.push(await fetchOnce('/api/cache-hit', 'req ' + i)); }
+        catch (e) { rows.push(`<div class="line err">req ${i} failed: ${e.message}</div>`); }
+        out.innerHTML = rows.join('');
+      }
+    });
+
+    bustBtn.addEventListener('click', async () => {
+      out.innerHTML = '<span class="dim">firing with cache-buster query param...</span>';
+      const url = '/api/cache-hit?bust=' + Math.random();
+      try { out.innerHTML = await fetchOnce(url, 'busted'); }
+      catch (e) { out.innerHTML = `<div class="line err">${e.message}</div>`; }
+    });
+  </script>
+</Layout>

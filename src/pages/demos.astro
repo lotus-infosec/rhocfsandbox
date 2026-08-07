@@ -72,10 +72,26 @@ import Layout from '../layouts/Layout.astro';
       <h3>branded error pages <span class="badge live">live</span></h3>
       <p class="dim">401 / 403 / 404 / 429 in matching aesthetic. some served by pages, some by cloudflare's edge.</p>
     </a>
-    <div class="card">
-      <h3>cache rules <span class="badge info">coming soon</span></h3>
-      <p class="dim">a set of routes with different cache behaviors — bypass, standard, cache-everything — plus headers showing the cache status.</p>
-    </div>
+    <a href="/page-shield/" class="card">
+      <h3>page shield <span class="badge live">live</span></h3>
+      <p class="dim">loads a third-party script so page shield has something to see. covers script inventory + csp recommendation.</p>
+    </a>
+  </div>
+
+  <h2># cache / cdn</h2>
+  <div class="grid">
+    <a href="/cache-hit/" class="card">
+      <h3>cache MISS → HIT <span class="badge live">live</span></h3>
+      <p class="dim">watch <code>cf-cache-status</code> flip from MISS to HIT across three back-to-back requests.</p>
+    </a>
+    <a href="/cache-purge/" class="card">
+      <h3>purge by cache-tag <span class="badge live">live</span></h3>
+      <p class="dim">warm the cache, purge tag <code>SITE_cache_purge_demo</code> from the dashboard, refresh to see new value.</p>
+    </a>
+    <a href="/cache-rules/" class="card">
+      <h3>per-path cache TTL <span class="badge live">live</span></h3>
+      <p class="dim">two endpoints, two rules: 1s vs 24h. side-by-side proof that cache rules are per-path.</p>
+    </a>
   </div>
 
   <h2># bots + humans</h2>

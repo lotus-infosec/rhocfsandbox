@@ -1,0 +1,84 @@
+---
+import Layout from '../layouts/Layout.astro';
+---
+<Layout title="cache-rules — rhocfsandbox" active="demos">
+  <h1><span class="prompt">demo: per-path cache TTLs via cache rules</span></h1>
+  <p class="dim">
+    two endpoints, two different cache rules. <code>/api/cache-short</code>
+    is cached for 1 second at the edge (basically un-cached). <code>/api/cache-forever</code>
+    is cached for 24 hours. the button fires both back-to-back three times
+    so you can watch <code>generatedAt</code> change on one and stay pinned
+    on the other.
+  </p>
+
+  <div class="btn-row">
+    <button class="demo" id="fetch-btn">fetch both endpoints × 3</button>
+  </div>
+  <div class="log-out" id="log-out"><span class="dim">click the button…</span></div>
+
+  <h2># rules</h2>
+  <table class="kv">
+    <tr><td><code>SITE_cache_short</code></td><td><code>/api/cache-short</code> → edge TTL 1s</td></tr>
+    <tr><td><code>SITE_cache_forever</code></td><td><code>/api/cache-forever</code> → edge TTL 86400s</td></tr>
+  </table>
+
+  <h2># from your terminal</h2>
+  <pre><code>{`# cache-short: every hit generates a new time
+for i in 1 2 3; do
+  sleep 2
+  curl -s "https://rhocfsandbox.com/api/cache-short" | grep generatedAt
+done
+
+# cache-forever: same time on repeat
+for i in 1 2 3; do
+  curl -s "https://rhocfsandbox.com/api/cache-forever" | grep generatedAt
+done`}</code></pre>
+
+  <script>
+    const btn = document.getElementById('fetch-btn');
+    const out = document.getElementById('log-out');
+
+    async function fetchPath(path) {
+      const t0 = performance.now();
+      const res = await fetch(path + '?t=' + Date.now(), { cache: 'no-store' });
+      // note: we use a fresh cache-buster in the query to bypass browser cache,
+      // but the edge still keys on the path + query, so cache-forever's edge
+      // cache is per-unique-query-string. use no cache-buster for real HIT proof.
+      const ms = Math.round(performance.now() - t0);
+      const status = res.headers.get('cf-cache-status') || 'n/a';
+      const j = await res.json();
+      return { path, status, generatedAt: j.generatedAt, ms };
+    }
+
+    // simpler: no query buster, browser cache disabled via cache:'no-store'
+    async function fetchClean(path) {
+      const t0 = performance.now();
+      const res = await fetch(path, { cache: 'no-store' });
+      const ms = Math.round(performance.now() - t0);
+      const status = res.headers.get('cf-cache-status') || 'n/a';
+      const j = await res.json();
+      return { path, status, generatedAt: j.generatedAt, ms };
+    }
+
+    btn.addEventListener('click', async () => {
+      out.innerHTML = '<span class="dim">firing 3 rounds against both paths...</span>';
+      const rows = [];
+      for (let i = 1; i <= 3; i++) {
+        try {
+          const s = await fetchClean('/api/cache-short');
+          const f = await fetchClean('/api/cache-forever');
+          const scls = s.status === 'HIT' ? 'ok' : 'warn';
+          const fcls = f.status === 'HIT' ? 'ok' : 'warn';
+          rows.push(`<div class="line ${scls}">round ${i} short  : ${s.status.padEnd(6)} generatedAt=${s.generatedAt}</div>`);
+          rows.push(`<div class="line ${fcls}">round ${i} forever: ${f.status.padEnd(6)} generatedAt=${f.generatedAt}</div>`);
+        } catch (e) {
+          rows.push(`<div class="line err">round ${i} failed: ${e.message}</div>`);
+        }
+        out.innerHTML = rows.join('');
+        if (i < 3) await new Promise(r => setTimeout(r, 2500));
+      }
+      rows.push('<div class="line dim">expect: short generatedAt changes every round (1s ttl expired), forever stays pinned</div>');
+      out.innerHTML = rows.join('');
+    });
+  </script>
+</Layout>

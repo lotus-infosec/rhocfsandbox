@@ -1,0 +1,59 @@
+---
+import Layout from '../layouts/Layout.astro';
+---
+<Layout title="cache-purge — rhocfsandbox" active="demos">
+  <h1><span class="prompt">demo: purge by cache-tag</span></h1>
+  <p class="dim">
+    <code>/api/cache-purge-target</code> is cached at the edge for 3600s and
+    tagged <code>SITE_cache_purge_demo</code>. warm the cache with the
+    button, then either purge from the dashboard (Caching → Configuration →
+    Purge Cache → Purge by tag) or with the curl below. refresh: new value.
+  </p>
+
+  <div class="btn-row">
+    <button class="demo" id="fetch-btn">fetch (warm the cache)</button>
+    <button class="demo warn" id="refetch-btn">re-fetch (should be HIT)</button>
+  </div>
+  <div class="log-out" id="log-out"><span class="dim">click a button…</span></div>
+
+  <h2># purge from your terminal (needs a purge-scoped api token)</h2>
+  <pre><code>{`# purge by tag (enterprise + biz zones only)
+curl -X POST "https://api.cloudflare.com/client/v4/zones/$ZONE_ID/purge_cache" \\
+  -H "Authorization: Bearer $CF_PURGE_TOKEN" \\
+  -H "Content-Type: application/json" \\
+  --data '{"tags": ["SITE_cache_purge_demo"]}'
+
+# on lower plans, purge the exact url
+curl -X POST "https://api.cloudflare.com/client/v4/zones/$ZONE_ID/purge_cache" \\
+  -H "Authorization: Bearer $CF_PURGE_TOKEN" \\
+  -H "Content-Type: application/json" \\
+  --data '{"files": ["https://rhocfsandbox.com/api/cache-purge-target"]}'`}</code></pre>
+
+  <h2># what's the rule</h2>
+  <table class="kv">
+    <tr><td>rule name</td><td><code>SITE_cache_purge_target</code></td></tr>
+    <tr><td>expression</td><td><code>http.request.uri.path eq "/api/cache-purge-target"</code></td></tr>
+    <tr><td>action</td><td>set_cache_settings · cache = eligible · edge TTL 3600s</td></tr>
+    <tr><td>cache-tag</td><td><code>SITE_cache_purge_demo</code></td></tr>
+  </table>
+
+  <script>
+    const btn = document.getElementById('fetch-btn');
+    const rebtn = document.getElementById('refetch-btn');
+    const out = document.getElementById('log-out');
+
+    async function fetchOnce(label) {
+      const t0 = performance.now();
+      const res = await fetch('/api/cache-purge-target', { cache: 'no-store' });
+      const ms = Math.round(performance.now() - t0);
+      const status = res.headers.get('cf-cache-status') || 'n/a';
+      const age = res.headers.get('age') || 'n/a';
+      const j = await res.json();
+      const cls = status === 'HIT' ? 'ok' : (status === 'MISS' ? 'warn' : 'err');
+      out.innerHTML += `<div class="line ${cls}">${label}: cf-cache-status=${status} · age=${age}s · generatedAt=${j.generatedAt} · ${ms}ms</div>`;
+    }
+
+    btn.addEventListener('click', () => { out.innerHTML = ''; fetchOnce('warm-up'); });
+    rebtn.addEventListener('click', () => fetchOnce('re-fetch'));
+  </script>
+</Layout>
