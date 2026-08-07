@@ -1,0 +1,107 @@
+---
+import Layout from '../layouts/Layout.astro';
+const SITE_KEY = '0x4AAAAAAEJgSPTwbmt7L0ea';
+---
+<Layout title="ai-chat — rhocfsandbox" active="demos">
+  <h1><span class="prompt">demo: workers ai + ai gateway chat</span></h1>
+  <p class="dim">
+    a small chat bot backed by llama-3.3-70b-instruct-fp8-fast on workers ai,
+    routed through cloudflare ai gateway for rate limiting and observability.
+    the model has no internet access, so it won't know today's weather or news.
+    ask it about web tech, cloudflare products, networking, etc.
+  </p>
+
+  <div class="callout">
+    <strong>limits (to prevent abuse of my neuron budget):</strong>
+    3 requests per hour per ip (ai gateway).
+    turnstile challenge required.
+    500 char input max, 200 token output max.
+    off-topic questions get a polite decline.
+  </div>
+
+  <h2># try one of these</h2>
+  <div class="btn-row" id="prompts">
+    <button class="demo pill">what does a cdn actually do?</button>
+    <button class="demo pill">compare rest and graphql in 3 bullets</button>
+    <button class="demo pill">write a haiku about load balancers</button>
+    <button class="demo pill">explain http/3 in one paragraph</button>
+    <button class="demo pill">what's the difference between tcp and udp?</button>
+  </div>
+
+  <h2># ask</h2>
+  <div class="chat-input">
+    <textarea id="prompt-in" rows="3" maxlength="500" placeholder="ask a technical question…"></textarea>
+    <div class="cf-turnstile" data-sitekey={SITE_KEY} data-theme="dark"></div>
+    <button class="demo" id="send-btn">send</button>
+  </div>
+  <div class="log-out chat-out" id="out"><span class="dim">waiting…</span></div>
+
+  <h2># how it works</h2>
+  <ol>
+    <li>page function <code>/api/chat</code> verifies turnstile server-side</li>
+    <li>truncates prompt to 500 chars, adds a system prompt (topic guardrail)</li>
+    <li>calls <code>env.AI.run(...)</code> with the AI Gateway option set to <code>site-ai-gateway</code></li>
+    <li>ai gateway enforces its own rate limit (3/hour/ip, sliding window)</li>
+    <li>on 429, we surface a friendly message with a suggested retry time</li>
+  </ol>
+
+  <h2># config</h2>
+  <table class="kv">
+    <tr><td>model</td><td><code>@cf/meta/llama-3.3-70b-instruct-fp8-fast</code></td></tr>
+    <tr><td>ai gateway</td><td><code>site-ai-gateway</code> (see <a href="/ai-gateway/">/ai-gateway</a>)</td></tr>
+    <tr><td>rate limit</td><td>3 req / 3600s / ip, sliding</td></tr>
+    <tr><td>max tokens</td><td>200 output, 500 char input</td></tr>
+    <tr><td>bindings</td><td><code>AI</code> (workers ai), <code>TURNSTILE_SECRET_KEY</code></td></tr>
+  </table>
+
+  <style>
+    .pill { font-size: .85rem; padding: .4rem .7rem; }
+    .chat-input { display: flex; flex-direction: column; gap: .75rem; max-width: 700px; }
+    .chat-input textarea { background:#1a1a1a; color:#e6e6e6; border:1px solid #333; padding:.5rem; font-family:inherit; }
+    .chat-out { max-width: 700px; }
+    .response { background:#0d0d0d; border-left:2px solid #00d4ff; padding:.75rem 1rem; margin:.5rem 0; white-space: pre-wrap; }
+    .meta { color:#666; font-size:.8rem; margin-top:.5rem; }
+  </style>
+
+  <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+  <script>
+    const out = document.getElementById('out');
+    const promptIn = document.getElementById('prompt-in');
+    const sendBtn = document.getElementById('send-btn');
+    document.getElementById('prompts').addEventListener('click', (e) => {
+      if (e.target.tagName === 'BUTTON') promptIn.value = e.target.textContent;
+    });
+    sendBtn.addEventListener('click', async () => {
+      const prompt = promptIn.value.trim();
+      if (!prompt) { out.innerHTML = '<div class="line err">type a question first</div>'; return; }
+      const token = document.querySelector('input[name="cf-turnstile-response"]')?.value;
+      if (!token) { out.innerHTML = '<div class="line err">complete the turnstile challenge above</div>'; return; }
+      out.innerHTML = '<span class="dim">thinking… (llama-3.3-70b, this can take 2-5s)</span>';
+      sendBtn.disabled = true;
+      try {
+        const r = await fetch('/api/chat', {
+          method: 'POST',
+          headers: {'content-type':'application/json'},
+          body: JSON.stringify({ prompt, turnstile_token: token }),
+        });
+        const j = await r.json();
+        if (r.ok) {
+          out.innerHTML = `<div class="response">${escapeHtml(j.response)}</div>
+            <div class="meta">model: ${j.model} · gateway: ${j.gateway} · ${j.elapsed_ms}ms</div>`;
+        } else if (r.status === 429) {
+          out.innerHTML = `<div class="line err">rate limited (${r.status})</div><div class="line dim">${j.message}</div>`;
+        } else {
+          out.innerHTML = `<div class="line err">${r.status}: ${JSON.stringify(j)}</div>`;
+        }
+      } catch (e) {
+        out.innerHTML = `<div class="line err">${e.message}</div>`;
+      } finally {
+        sendBtn.disabled = false;
+        if (window.turnstile) window.turnstile.reset();
+      }
+    });
+    function escapeHtml(s) {
+      return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    }
+  </script>
+</Layout>

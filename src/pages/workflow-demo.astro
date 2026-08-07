@@ -1,0 +1,66 @@
+---
+import Layout from '../layouts/Layout.astro';
+---
+<Layout title="workflow-demo — rhocfsandbox" active="demos">
+  <h1><span class="prompt">demo: cloudflare workflows</span></h1>
+  <p class="dim">
+    a multi-step workflow with sleeps between steps. each step is durably
+    checkpointed. if the underlying worker restarts mid-run, the workflow
+    resumes from the last completed step without re-executing prior work.
+    good for long-running async jobs: onboarding flows, video processing,
+    scheduled retries, saga patterns.
+  </p>
+
+  <div class="btn-row">
+    <input type="text" id="input-in" placeholder="input string" value="cloudflare" maxlength="60" style="background:#1a1a1a;color:#e6e6e6;border:1px solid #333;padding:.5rem;font-family:inherit;"/>
+    <button class="demo" id="start-btn">start workflow</button>
+  </div>
+  <div class="log-out" id="out"><span class="dim">start a workflow…</span></div>
+
+  <h2># the workflow steps</h2>
+  <ol>
+    <li><code>step-1-uppercase</code>: uppercase the input</li>
+    <li><code>pause-3s</code>: sleep 3 seconds (durable — survives worker restart)</li>
+    <li><code>step-2-reverse</code>: reverse the string</li>
+    <li><code>pause-3s-again</code>: sleep 3 seconds</li>
+    <li><code>step-3-length</code>: measure length</li>
+  </ol>
+  <p class="dim">total: ~6-8 seconds. compare that to a plain worker which would time out after 30s cpu, or block a request for the full duration.</p>
+
+  <h2># config</h2>
+  <table class="kv">
+    <tr><td>workflow</td><td><code>demo-workflow</code> in worker <code>site-workflow</code></td></tr>
+    <tr><td>binding</td><td><code>WORKFLOW</code> (pages function binding)</td></tr>
+    <tr><td>trigger</td><td>POST <code>/api/workflow-start</code></td></tr>
+    <tr><td>status</td><td>GET <code>/api/workflow-status?id=&lt;instance_id&gt;</code></td></tr>
+  </table>
+
+  <script>
+    const out = document.getElementById('out');
+    const inp = document.getElementById('input-in');
+    document.getElementById('start-btn').addEventListener('click', async () => {
+      const input = inp.value.trim() || 'demo';
+      out.innerHTML = '<span class="dim">starting…</span>';
+      const r = await fetch('/api/workflow-start', {
+        method: 'POST', headers: {'content-type':'application/json'},
+        body: JSON.stringify({ input }),
+      });
+      const j = await r.json();
+      if (!r.ok) { out.innerHTML = `<div class="line err">${JSON.stringify(j)}</div>`; return; }
+      const id = j.id;
+      out.innerHTML = `<div class="line ok">started id=<code>${id}</code></div><div class="line dim">polling status every 1s…</div>`;
+      for (let i = 0; i < 25; i++) {
+        await new Promise(r => setTimeout(r, 1000));
+        const p = await fetch('/api/workflow-status?id=' + id);
+        const pj = await p.json();
+        const status = pj.status?.status || 'unknown';
+        out.innerHTML += `<div class="line">t+${i+1}s: ${status}</div>`;
+        if (status === 'complete' || status === 'errored' || status === 'terminated') {
+          out.innerHTML += `<pre class="dim">${JSON.stringify(pj.status, null, 2)}</pre>`;
+          return;
+        }
+      }
+      out.innerHTML += `<div class="line warn">polled 25s without completion</div>`;
+    });
+  </script>
+</Layout>

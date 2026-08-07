@@ -98,6 +98,42 @@ import Layout from '../layouts/Layout.astro';
     </a>
   </div>
 
+  <h2># developer platform</h2>
+  <div class="grid">
+    <a href="/counter/" class="card">
+      <h3>kv counter <span class="badge live">live</span></h3>
+      <p class="dim">workers kv storing a single global counter. eventually consistent.</p>
+    </a>
+    <a href="/guestbook/" class="card">
+      <h3>d1 guestbook <span class="badge live">live</span></h3>
+      <p class="dim">sqlite-backed guestbook. turnstile-gated. auto-purged 2x daily by cron worker.</p>
+    </a>
+    <a href="/live-count/" class="card">
+      <h3>durable objects live viewers <span class="badge live">live</span></h3>
+      <p class="dim">every open tab holds a websocket to one durable object. count broadcasts in real time.</p>
+    </a>
+    <a href="/queues-demo/" class="card">
+      <h3>queues (producer + consumer) <span class="badge live">live</span></h3>
+      <p class="dim">pages function enqueues, separate worker consumes async, result surfaces via polling.</p>
+    </a>
+    <a href="/workflow-demo/" class="card">
+      <h3>workflows <span class="badge live">live</span></h3>
+      <p class="dim">durable multi-step workflow with sleeps. checkpointed, survives worker restarts.</p>
+    </a>
+    <a href="/ai-chat/" class="card">
+      <h3>ai chat <span class="badge live">live</span></h3>
+      <p class="dim">llama-3.3-70b via ai gateway. turnstile + rate limit + system prompt guardrails.</p>
+    </a>
+    <a href="/ai-gateway/" class="card">
+      <h3>ai gateway explainer <span class="badge live">live</span></h3>
+      <p class="dim">what ai gateway does behind /ai-chat. rate limits, caching, logs, fallback.</p>
+    </a>
+    <a href="/vectorize/" class="card">
+      <h3>vectorize semantic search <span class="badge live">live</span></h3>
+      <p class="dim">24-doc corpus. embed query, cosine-nn search, return top 5. built on workers ai + vectorize.</p>
+    </a>
+  </div>
+
   <h2># load balancing</h2>
   <div class="grid">
     <a href="/lb-failover/" class="card">

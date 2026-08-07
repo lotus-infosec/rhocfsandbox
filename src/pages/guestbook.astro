@@ -1,0 +1,94 @@
+---
+import Layout from '../layouts/Layout.astro';
+const SITE_KEY = '0x4AAAAAAEJgSPTwbmt7L0ea';
+---
+<Layout title="guestbook — rhocfsandbox" active="demos">
+  <h1><span class="prompt">demo: d1 guestbook</span></h1>
+  <p class="dim">
+    a serverless sqlite guestbook. entries go into <code>SITE_guestbook_db</code>
+    (cloudflare d1), a per-region-primary sqlite database that ships close
+    to the write and replicates read-only copies globally.
+  </p>
+
+  <div class="callout">
+    <strong>data hygiene:</strong> this guestbook is auto-purged twice daily
+    at 14:00 utc (09:00 est) and 22:00 utc (17:00 est) by the
+    <code>site-guestbook-cron</code> worker. no ip addresses or user-agent
+    strings are stored. do not put anything sensitive here anyway.
+  </div>
+
+  <h2># sign the book</h2>
+  <form id="gb-form" class="ts-form">
+    <label>name<input type="text" name="name" required maxlength="40" autocomplete="off"/></label>
+    <label>message<textarea name="message" rows="3" required maxlength="280"></textarea></label>
+    <div class="cf-turnstile" data-sitekey={SITE_KEY} data-theme="dark"></div>
+    <button type="submit" class="demo">sign</button>
+  </form>
+  <div class="log-out" id="submit-out"></div>
+
+  <h2># recent entries</h2>
+  <button class="demo" id="refresh-btn">refresh</button>
+  <div class="log-out" id="entries-out"><span class="dim">click refresh…</span></div>
+
+  <h2># how it works</h2>
+  <ol>
+    <li>form posts to <code>/api/guestbook</code> with a turnstile token</li>
+    <li>function verifies turnstile server-side, truncates name and message</li>
+    <li>inserts into d1 using a prepared statement (parameterized, sqli-safe)</li>
+    <li>GET returns the 20 most recent rows</li>
+    <li>a separate worker <code>site-guestbook-cron</code> runs <code>DELETE FROM guestbook</code> at 14:00 and 22:00 utc daily</li>
+  </ol>
+
+  <style>
+    .ts-form { display: flex; flex-direction: column; gap: .75rem; max-width: 500px; }
+    .ts-form label { display: flex; flex-direction: column; gap: .25rem; }
+    .ts-form input, .ts-form textarea {
+      background: #1a1a1a; color: #e6e6e6; border: 1px solid #333;
+      padding: .5rem; font-family: inherit;
+    }
+    .entry { padding: .5rem 0; border-bottom: 1px dashed #333; }
+    .entry .name { color: #00d4ff; }
+    .entry .ts { color: #666; font-size: .85rem; }
+  </style>
+
+  <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+  <script>
+    const form = document.getElementById('gb-form');
+    const submitOut = document.getElementById('submit-out');
+    const entriesOut = document.getElementById('entries-out');
+
+    async function refresh() {
+      entriesOut.innerHTML = '<span class="dim">loading…</span>';
+      const r = await fetch('/api/guestbook');
+      const j = await r.json();
+      if (!j.entries || j.entries.length === 0) {
+        entriesOut.innerHTML = '<span class="dim">no entries yet. sign the book.</span>';
+        return;
+      }
+      entriesOut.innerHTML = j.entries.map(e =>
+        `<div class="entry"><span class="name">${escapeHtml(e.name)}</span> · <span class="ts">${e.created_at} UTC</span><br/>${escapeHtml(e.message)}</div>`
+      ).join('');
+    }
+    function escapeHtml(s) {
+      return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    }
+
+    document.getElementById('refresh-btn').addEventListener('click', refresh);
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const fd = new FormData(form);
+      const token = fd.get('cf-turnstile-response');
+      if (!token) { submitOut.innerHTML = '<div class="line err">complete the challenge first.</div>'; return; }
+      submitOut.innerHTML = '<span class="dim">submitting…</span>';
+      const r = await fetch('/api/guestbook', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ name: fd.get('name'), message: fd.get('message'), turnstile_token: token }),
+      });
+      const j = await r.json();
+      submitOut.innerHTML = `<div class="line ${r.ok ? 'ok' : 'err'}">${JSON.stringify(j)}</div>`;
+      if (r.ok) { form.reset(); if (window.turnstile) window.turnstile.reset(); refresh(); }
+    });
+    refresh();
+  </script>
+</Layout>

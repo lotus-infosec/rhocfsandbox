@@ -1,0 +1,65 @@
+---
+import Layout from '../layouts/Layout.astro';
+---
+<Layout title="ai-gateway — rhocfsandbox" active="demos">
+  <h1><span class="prompt">explainer: cloudflare ai gateway</span></h1>
+  <p class="dim">
+    ai gateway is a control plane and observability layer that sits in
+    front of your ai calls. it does not host models. you point your app
+    at the gateway, the gateway forwards to the actual provider
+    (workers ai, openai, anthropic, google, aws bedrock, groq, mistral, etc),
+    and gives you rate limiting, caching, logging, and fallback along the way.
+  </p>
+
+  <p><a href="/ai-chat/">→ /ai-chat</a> is the live demo. this page just describes what it's doing.</p>
+
+  <h2># what ai gateway gives you</h2>
+  <table class="kv">
+    <tr><td><strong>rate limiting</strong></td><td>configurable per-gateway. this site uses 3 req / hour / ip (sliding). protects your api key + budget from abuse.</td></tr>
+    <tr><td><strong>caching</strong></td><td>identical prompts return the previous response without hitting the model. saves neurons and latency.</td></tr>
+    <tr><td><strong>logs</strong></td><td>every request/response captured with timing, cost estimate, cache hit/miss, and full body. searchable in the dashboard.</td></tr>
+    <tr><td><strong>analytics</strong></td><td>tokens consumed, cost, request volume, error rate — all charted, per model, per gateway.</td></tr>
+    <tr><td><strong>fallback</strong></td><td>if the primary provider errors or times out, route to a backup provider (or a smaller/cheaper model on the same provider).</td></tr>
+    <tr><td><strong>evaluations</strong></td><td>run test prompts against multiple models side-by-side and score them.</td></tr>
+    <tr><td><strong>guardrails</strong></td><td>content moderation, pii detection, prompt injection detection before/after the model call.</td></tr>
+  </table>
+
+  <h2># how /ai-chat uses it</h2>
+  <pre class="ascii">{`
+  ┌─────────┐  POST /api/chat        ┌─────────────┐  env.AI.run(model,
+  │ browser │───────────────────────→│ pages func  │─  input, {gateway:{
+  └─────────┘                        └──────┬──────┘  id:'site-ai-gateway'}})
+                                            │
+                                            ▼
+                              ┌──────────────────────────┐
+                              │  ai gateway              │  ← rate limit 3/hr/ip
+                              │  id: site-ai-gateway     │  ← log request
+                              │  provider: workers-ai    │  ← cache lookup
+                              └──────────┬───────────────┘
+                                         │ forward on miss
+                                         ▼
+                              ┌──────────────────────────┐
+                              │  workers ai              │
+                              │  llama-3.3-70b-...-fast  │
+                              └──────────────────────────┘
+  `}</pre>
+
+  <h2># this gateway's settings</h2>
+  <table class="kv">
+    <tr><td>gateway id</td><td><code>site-ai-gateway</code></td></tr>
+    <tr><td>rate limit</td><td>3 requests / 3600s per ip, sliding window</td></tr>
+    <tr><td>cache ttl</td><td>0s (disabled — chat responses are stateful and short-lived)</td></tr>
+    <tr><td>log collection</td><td>enabled</td></tr>
+    <tr><td>upstream</td><td>workers ai (universal endpoint via the workers ai binding)</td></tr>
+  </table>
+
+  <h2># when to layer this vs. skip it</h2>
+  <p class="dim">
+    if you're building a serious ai product, use ai gateway. the operational
+    win (logs, rate limits, cost caps, provider swap without redeploying) is
+    huge. if you're prototyping and calling one model from a single script,
+    skip the layer until you actually feel one of its pains.
+  </p>
+
+  <style>.ascii { background:#0d0d0d; padding:1rem; overflow-x:auto; color:#888; font-size:.85rem; line-height:1.2; }</style>
+</Layout>

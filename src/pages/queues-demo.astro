@@ -1,0 +1,79 @@
+---
+import Layout from '../layouts/Layout.astro';
+---
+<Layout title="queues-demo — rhocfsandbox" active="demos">
+  <h1><span class="prompt">demo: cloudflare queues (producer + consumer)</span></h1>
+  <p class="dim">
+    submit text below. the pages function puts it on a queue and returns
+    immediately with a job id. a separate consumer worker picks up the
+    message asynchronously, "processes" it (uppercases the text), and
+    stores the result in kv. the page polls for the result.
+  </p>
+
+  <div class="btn-row">
+    <input type="text" id="text-in" placeholder="type something to enqueue" maxlength="200" style="background:#1a1a1a;color:#e6e6e6;border:1px solid #333;padding:.5rem;min-width:300px;font-family:inherit;"/>
+    <button class="demo" id="submit-btn">enqueue</button>
+  </div>
+  <div class="log-out" id="out"><span class="dim">enqueue something…</span></div>
+
+  <h2># architecture</h2>
+  <pre class="ascii">{`
+  ┌─────────┐    POST /api/queue-enqueue     ┌─────────────┐
+  │ browser │──────────────────────────────→ │ pages func  │
+  └─────────┘                                └──────┬──────┘
+       ▲                                            │ QUEUE.send({id, text})
+       │                                            ▼
+       │                                     ┌─────────────┐
+       │       poll /api/queue-status?id=... │  site-queue │ (cloudflare queues)
+       │◄─────────────────────────────────── └──────┬──────┘
+       │        pending: true / result: {}          │ batched delivery
+       │                                            ▼
+       │                                     ┌─────────────────────┐
+       │                                     │ site-queue-consumer │
+       │                                     │  (worker)           │
+       │                                     └──────┬──────────────┘
+       │                                            │ KV.put(job:id, result)
+       │                                            ▼
+       │        pages func reads KV                 ┌──────┐
+       └────────────────────────────────────────────│  KV  │
+                                                     └──────┘
+  `}</pre>
+
+  <h2># config</h2>
+  <table class="kv">
+    <tr><td>queue</td><td><code>site-queue</code></td></tr>
+    <tr><td>producer</td><td>pages function <code>/api/queue-enqueue</code> (QUEUE binding)</td></tr>
+    <tr><td>consumer</td><td>worker <code>site-queue-consumer</code> (batch_size=10, max_retries=3)</td></tr>
+    <tr><td>result store</td><td>KV, key <code>job:&lt;id&gt;</code>, TTL 3600s</td></tr>
+  </table>
+
+  <style>.ascii { background:#0d0d0d; padding:1rem; overflow-x:auto; color:#888; font-size:.85rem; line-height:1.2; }</style>
+
+  <script>
+    const out = document.getElementById('out');
+    const inp = document.getElementById('text-in');
+    document.getElementById('submit-btn').addEventListener('click', async () => {
+      const text = inp.value.trim();
+      if (!text) { out.innerHTML = '<div class="line err">type something first</div>'; return; }
+      out.innerHTML = '<span class="dim">enqueueing…</span>';
+      const r = await fetch('/api/queue-enqueue', {
+        method: 'POST', headers: {'content-type':'application/json'},
+        body: JSON.stringify({ text }),
+      });
+      const j = await r.json();
+      out.innerHTML = `<div class="line ok">queued. id=${j.id}</div><div class="line dim">polling for result…</div>`;
+      const start = Date.now();
+      for (let i = 0; i < 30; i++) {
+        await new Promise(r => setTimeout(r, 500));
+        const p = await fetch('/api/queue-status?id=' + j.id);
+        const pj = await p.json();
+        if (!pj.pending && pj.output) {
+          const ms = Date.now() - start;
+          out.innerHTML += `<div class="line ok">result in ${ms}ms: <code>${pj.output}</code></div><pre class="dim">${JSON.stringify(pj, null, 2)}</pre>`;
+          return;
+        }
+      }
+      out.innerHTML += `<div class="line warn">timed out after 15s</div>`;
+    });
+  </script>
+</Layout>

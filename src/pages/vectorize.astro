@@ -1,0 +1,85 @@
+---
+import Layout from '../layouts/Layout.astro';
+---
+<Layout title="vectorize — rhocfsandbox" active="demos">
+  <h1><span class="prompt">demo: vectorize semantic search</span></h1>
+  <p class="dim">
+    a tiny corpus of cloudflare product descriptions has been embedded with
+    <code>@cf/baai/bge-base-en-v1.5</code> (768 dimensions) and stored in
+    a vectorize index. the search box below embeds your query the same way,
+    then queries the index for the nearest neighbors by cosine similarity.
+    unlike keyword search, "how do i keep bad traffic out" will match on
+    firewall/waf docs even though it doesn't mention those words.
+  </p>
+
+  <div class="btn-row">
+    <input type="text" id="q-in" placeholder="try: how do i keep bad traffic out" style="background:#1a1a1a;color:#e6e6e6;border:1px solid #333;padding:.5rem;min-width:340px;font-family:inherit;"/>
+    <button class="demo" id="search-btn">search</button>
+  </div>
+
+  <h3>example queries:</h3>
+  <div class="btn-row">
+    <button class="demo pill">how do i cache static files</button>
+    <button class="demo pill">store user data in sqlite</button>
+    <button class="demo pill">run functions at the edge</button>
+    <button class="demo pill">real time coordination between users</button>
+    <button class="demo pill">block malicious bots</button>
+  </div>
+
+  <div class="log-out" id="out"><span class="dim">search something…</span></div>
+
+  <h2># architecture</h2>
+  <ol>
+    <li>query text goes to page function <code>/api/vector-search</code></li>
+    <li>function calls workers ai (<code>bge-base-en-v1.5</code>) to embed the query into a 768-dim vector</li>
+    <li>function calls <code>{`env.VEC.query(vector, { topK: 5 })`}</code> on the vectorize index</li>
+    <li>results include cosine similarity scores and the metadata we attached at insert time</li>
+  </ol>
+
+  <h2># config</h2>
+  <table class="kv">
+    <tr><td>index</td><td><code>site-vectorize-index</code></td></tr>
+    <tr><td>dimensions</td><td>768</td></tr>
+    <tr><td>metric</td><td>cosine</td></tr>
+    <tr><td>embedding model</td><td><code>@cf/baai/bge-base-en-v1.5</code></td></tr>
+    <tr><td>binding</td><td><code>VEC</code></td></tr>
+  </table>
+
+  <style>
+    .pill { font-size: .85rem; padding: .4rem .7rem; }
+    .match { background:#0d0d0d; border-left:2px solid #00d4ff; padding:.6rem 1rem; margin:.4rem 0; }
+    .match .score { color:#00d4ff; font-family:monospace; }
+    .match .title { color:#e6e6e6; font-weight:bold; }
+    .match .body { color:#aaa; font-size:.9rem; }
+  </style>
+
+  <script>
+    const out = document.getElementById('out');
+    const qIn = document.getElementById('q-in');
+    document.querySelectorAll('.pill').forEach(b => b.addEventListener('click', e => {
+      qIn.value = e.target.textContent;
+      doSearch();
+    }));
+    async function doSearch() {
+      const query = qIn.value.trim();
+      if (!query) return;
+      out.innerHTML = '<span class="dim">embedding + searching…</span>';
+      const r = await fetch('/api/vector-search', {
+        method: 'POST', headers:{'content-type':'application/json'},
+        body: JSON.stringify({ query }),
+      });
+      const j = await r.json();
+      if (!r.ok || !j.matches) { out.innerHTML = `<div class="line err">${JSON.stringify(j)}</div>`; return; }
+      out.innerHTML = j.matches.map(m =>
+        `<div class="match"><div class="score">${m.score.toFixed(4)}</div>
+         <div class="title">${escapeHtml(m.metadata?.title || m.id)}</div>
+         <div class="body">${escapeHtml(m.metadata?.text || '')}</div></div>`
+      ).join('') || '<span class="dim">no matches</span>';
+    }
+    document.getElementById('search-btn').addEventListener('click', doSearch);
+    qIn.addEventListener('keydown', e => { if (e.key === 'Enter') doSearch(); });
+    function escapeHtml(s) {
+      return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    }
+  </script>
+</Layout>

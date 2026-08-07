@@ -1,0 +1,45 @@
+---
+import Layout from '../layouts/Layout.astro';
+---
+<Layout title="counter — rhocfsandbox" active="demos">
+  <h1><span class="prompt">demo: workers kv counter</span></h1>
+  <p class="dim">
+    a single global counter stored in workers kv. every visitor's click
+    increments the same key from any colo. kv is eventually consistent
+    globally, so a burst of clicks from different regions can briefly
+    show stale reads. fine for counters, not for banking.
+  </p>
+
+  <div class="btn-row">
+    <button class="demo" id="load-btn">read current count</button>
+    <button class="demo" id="inc-btn">+1</button>
+  </div>
+  <div class="log-out" id="out"><span class="dim">click a button…</span></div>
+
+  <h2># how it works</h2>
+  <ol>
+    <li>page function <code>/api/counter</code> binds to kv namespace <code>SITE_counter_kv</code></li>
+    <li>GET reads the <code>global_counter</code> key</li>
+    <li>POST reads, adds 1, writes it back</li>
+    <li>no transaction, no lock. two writers racing can overwrite each other. that's kv.</li>
+  </ol>
+
+  <h2># config</h2>
+  <table class="kv">
+    <tr><td>namespace</td><td><code>SITE_counter_kv</code></td></tr>
+    <tr><td>binding name</td><td><code>KV_COUNTER</code></td></tr>
+    <tr><td>key</td><td><code>global_counter</code></td></tr>
+    <tr><td>free tier</td><td>100k reads/day, 1k writes/day, 1gb storage</td></tr>
+  </table>
+
+  <script>
+    const out = document.getElementById('out');
+    const show = (o) => { out.innerHTML = `<pre>${JSON.stringify(o, null, 2)}</pre>`; };
+    document.getElementById('load-btn').addEventListener('click', async () => {
+      const r = await fetch('/api/counter'); show(await r.json());
+    });
+    document.getElementById('inc-btn').addEventListener('click', async () => {
+      const r = await fetch('/api/counter', { method: 'POST' }); show(await r.json());
+    });
+  </script>
+</Layout>

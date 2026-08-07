@@ -1,0 +1,59 @@
+---
+import Layout from '../layouts/Layout.astro';
+---
+<Layout title="live-count — rhocfsandbox" active="demos">
+  <h1><span class="prompt">demo: durable objects live viewer count</span></h1>
+  <p class="dim">
+    open this page in multiple tabs (or share the url with a friend). every
+    open tab holds a websocket to the same durable object, which broadcasts
+    the current connection count to all listeners in real time.
+  </p>
+
+  <div class="hero-count" id="count">–</div>
+  <div class="hero-label">viewers connected right now</div>
+
+  <div class="log-out" id="log-out"><span class="dim">connecting…</span></div>
+
+  <h2># how it works</h2>
+  <ol>
+    <li>page opens a websocket to <code>wss://site-livecount-do.rhomanie-demo-account.workers.dev/ws</code></li>
+    <li>the worker forwards the upgrade to a durable object stub keyed by <code>global</code></li>
+    <li>the DO accepts the ws, adds it to an in-memory <code>Set</code>, and broadcasts <code>{`{count}`}</code> to all sessions</li>
+    <li>on <code>close</code>/<code>error</code>, the DO removes the session and rebroadcasts</li>
+    <li>every visitor talks to the same DO instance because the id is derived from a fixed name</li>
+  </ol>
+
+  <h2># why not just workers?</h2>
+  <p class="dim">
+    workers are stateless. two requests can land on different workers with
+    no shared memory. durable objects give you a single-threaded actor with
+    strongly consistent in-memory state, pinned to one region. perfect for
+    coordination like counters, chat rooms, game lobbies, presence.
+  </p>
+
+  <style>
+    .hero-count { font-size: 4rem; color: #00d4ff; font-weight: bold; text-align: center; margin: 1rem 0; }
+    .hero-label { text-align: center; color: #888; margin-bottom: 1rem; }
+  </style>
+
+  <script>
+    const countEl = document.getElementById('count');
+    const out = document.getElementById('log-out');
+    let ws;
+    function connect() {
+      const url = 'wss://site-livecount-do.rhomanie-demo-account.workers.dev/ws';
+      out.innerHTML = `<span class="dim">→ ${url}</span>`;
+      ws = new WebSocket(url);
+      ws.onopen = () => { out.innerHTML += `<div class="line ok">connected. waiting for count…</div>`; };
+      ws.onmessage = (e) => {
+        try {
+          const j = JSON.parse(e.data);
+          if (j.type === 'count') countEl.textContent = j.count;
+        } catch {}
+      };
+      ws.onclose = () => { out.innerHTML += `<div class="line warn">closed. reconnecting in 2s…</div>`; setTimeout(connect, 2000); };
+      ws.onerror = (e) => { out.innerHTML += `<div class="line err">error</div>`; };
+    }
+    connect();
+  </script>
+</Layout>
