@@ -1,0 +1,64 @@
+---
+import Layout from '../layouts/Layout.astro';
+---
+<Layout title="bot-score — rhocfsandbox" active="demos">
+  <h1><span class="prompt">demo: bot score reflection</span></h1>
+  <p class="dim">
+    every request that hits cloudflare gets annotated with bot management
+    signals in <code>request.cf.botManagement</code>. this page fetches those
+    fields from a pages function and renders them. compare a real browser
+    (score ≈ 99, likely human) vs <code>curl</code> or postman (much lower).
+  </p>
+
+  <div class="btn-row">
+    <button class="demo" id="fetch-btn">read my bot score</button>
+  </div>
+  <div class="log-out" id="log-out"><span class="dim">click the button…</span></div>
+
+  <h2># try from your terminal</h2>
+  <pre><code># curl with default user-agent (usually scored low)
+curl -s "https://rhocfsandbox.com/api/bot-score" | jq
+
+# spoofing a real browser UA still fails behind the scenes — bot management
+# uses fingerprinting signals well beyond user-agent
+curl -s -A "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36" "https://rhocfsandbox.com/api/bot-score" | jq</code></pre>
+
+  <h2># what the fields mean</h2>
+  <table class="kv">
+    <tr><td><code>score</code></td><td>1-99. lower = more bot-like. 99 = confident human.</td></tr>
+    <tr><td><code>verifiedBot</code></td><td>true if the request came from a known good bot (googlebot, bingbot, etc)</td></tr>
+    <tr><td><code>staticResource</code></td><td>true if the requested asset is a static file (bot scoring usually skipped)</td></tr>
+    <tr><td><code>ja3Hash</code></td><td>tls client fingerprint</td></tr>
+    <tr><td><code>detectionIds</code></td><td>ids of the bot detections that fired for this request</td></tr>
+  </table>
+  <p class="dim">
+    some fields require the bot management enterprise sku. free / pro / biz
+    zones see a subset. if you see <code>null</code> for a field, that signal
+    isn't enabled on this zone.
+  </p>
+
+  <script>
+    const btn = document.getElementById('fetch-btn');
+    const out = document.getElementById('log-out');
+    btn.addEventListener('click', async () => {
+      out.innerHTML = '<span class="dim">reading /api/bot-score ...</span>';
+      try {
+        const res = await fetch('/api/bot-score', { cache: 'no-store' });
+        const j = await res.json();
+        const bm = j.botManagement || {};
+        out.innerHTML = `
+          <div class="line ok">score: ${bm.score ?? 'null'}</div>
+          <div class="line">verifiedBot: ${bm.verifiedBot ?? 'null'}</div>
+          <div class="line">staticResource: ${bm.staticResource ?? 'null'}</div>
+          <div class="line">ja3Hash: ${bm.ja3Hash ?? 'null'}</div>
+          <div class="line">corporateProxy: ${bm.corporateProxy ?? 'null'}</div>
+          <div class="line">detectionIds: ${JSON.stringify(bm.detectionIds ?? [])}</div>
+          <div class="line dim">ua: ${j.userAgent}</div>
+          <div class="line dim">colo: ${j.colo} · country: ${j.country}</div>
+        `;
+      } catch (e) {
+        out.innerHTML = `<div class="line err">fetch failed: ${e.message}</div>`;
+      }
+    });
+  </script>
+</Layout>

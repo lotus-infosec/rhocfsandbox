@@ -1,0 +1,68 @@
+---
+import Layout from '../layouts/Layout.astro';
+---
+<Layout title="waf-owasp — rhocfsandbox" active="demos">
+  <h1><span class="prompt">demo: managed rulesets (owasp core + cloudflare managed)</span></h1>
+  <p class="dim">
+    the cloudflare managed ruleset and owasp core ruleset are enabled on this
+    zone. they inspect query strings, form bodies, and headers for known attack
+    signatures — xss, sqli, path traversal, command injection, and more. this
+    page fires three <code>fetch()</code> calls to <code>/api/owasp-probe</code>
+    with different payloads. the managed rules block before the function runs.
+  </p>
+
+  <h2># fire a probe</h2>
+  <div class="btn-row">
+    <button class="demo" data-payload="hello world" data-label="safe">safe query</button>
+    <button class="demo danger" data-payload={'<script>alert(1)</script>'} data-label="xss">xss payload</button>
+    <button class="demo danger" data-payload={"' OR 1=1 --"} data-label="sqli">sqli payload</button>
+  </div>
+  <div class="log-out" id="log-out"><span class="dim">click a button…</span></div>
+
+  <h2># or from your terminal</h2>
+  <pre><code>{`# safe → 200
+curl -s -o /dev/null -w "%{http_code}\\n" "https://rhocfsandbox.com/api/owasp-probe?q=hello"
+
+# xss → 403 from the managed ruleset
+curl -s -o /dev/null -w "%{http_code}\\n" --data-urlencode "q=<script>alert(1)</script>" -G "https://rhocfsandbox.com/api/owasp-probe"
+
+# sqli → 403 from the managed ruleset
+curl -s -o /dev/null -w "%{http_code}\\n" --data-urlencode "q=' OR 1=1 --" -G "https://rhocfsandbox.com/api/owasp-probe"`}</code></pre>
+
+  <h2># what's the config</h2>
+  <table class="kv">
+    <tr><td>cloudflare managed ruleset</td><td>deployed on this zone · default action per rule</td></tr>
+    <tr><td>owasp core ruleset</td><td>deployed on this zone · paranoia level default</td></tr>
+    <tr><td>endpoint</td><td><code>/api/owasp-probe?q=&lt;payload&gt;</code></td></tr>
+    <tr><td>expected behavior</td><td>safe → 200 with echo · xss/sqli → 403 from managed ruleset</td></tr>
+  </table>
+
+  <script>
+    const out = document.getElementById('log-out');
+    document.querySelectorAll('button.demo[data-payload]').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const payload = btn.getAttribute('data-payload');
+        const label = btn.getAttribute('data-label');
+        out.innerHTML = `<span class="dim">sending ${label} payload...</span>`;
+        try {
+          const t0 = performance.now();
+          const url = '/api/owasp-probe?q=' + encodeURIComponent(payload);
+          const res = await fetch(url, { cache: 'no-store' });
+          const ms = Math.round(performance.now() - t0);
+          const cls = res.ok ? 'ok' : 'err';
+          const ray = res.headers.get('cf-ray') || 'n/a';
+          const mit = res.headers.get('cf-mitigated') || 'none';
+          out.innerHTML = `
+            <div class="line ${cls}">payload: ${label}</div>
+            <div class="line ${cls}">status: ${res.status} ${res.statusText}</div>
+            <div class="line">cf-ray: ${ray}</div>
+            <div class="line">cf-mitigated: ${mit}</div>
+            <div class="line dim">round trip: ${ms}ms</div>
+          `;
+        } catch (e) {
+          out.innerHTML = `<div class="line err">fetch failed: ${e.message}</div>`;
+        }
+      });
+    });
+  </script>
+</Layout>

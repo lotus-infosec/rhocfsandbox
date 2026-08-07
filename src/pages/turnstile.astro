@@ -1,0 +1,84 @@
+---
+import Layout from '../layouts/Layout.astro';
+// Turnstile site key is public by design. Injected here at build time from
+// the pages env var so we have a single source of truth; the secret lives
+// only in the runtime env of /api/turnstile-verify.
+const SITE_KEY = '0x4AAAAAAEJgSPTwbmt7L0ea';
+---
+<Layout title="turnstile — rhocfsandbox" active="demos">
+  <h1><span class="prompt">demo: turnstile challenge widget</span></h1>
+  <p class="dim">
+    a small contact-form-shaped page with cloudflare turnstile guarding
+    submit. the widget issues a short-lived token in the browser; the pages
+    function calls turnstile's siteverify api server-side before accepting
+    the form.
+  </p>
+
+  <h2># form</h2>
+  <form id="ts-form" class="ts-form">
+    <label>name<input type="text" name="name" required autocomplete="off" value="rho"/></label>
+    <label>message<textarea name="message" rows="3" required>hello from turnstile</textarea></label>
+    <div class="cf-turnstile" data-sitekey={SITE_KEY} data-theme="dark"></div>
+    <button type="submit" class="demo">submit</button>
+  </form>
+  <div class="log-out" id="log-out"><span class="dim">complete the challenge and submit…</span></div>
+
+  <h2># how it works</h2>
+  <ol>
+    <li>widget loads from <code>challenges.cloudflare.com</code>, runs a browser challenge</li>
+    <li>on pass, injects a token into a hidden <code>cf-turnstile-response</code> input</li>
+    <li>form posts that token to <code>/api/turnstile-verify</code></li>
+    <li>function calls <code>https://challenges.cloudflare.com/turnstile/v0/siteverify</code> with the secret + token</li>
+    <li>if <code>success: true</code>, form is accepted</li>
+  </ol>
+
+  <h2># config</h2>
+  <table class="kv">
+    <tr><td>widget name</td><td><code>SITE_turnstile_demo</code></td></tr>
+    <tr><td>mode</td><td>managed (cloudflare picks the challenge)</td></tr>
+    <tr><td>site key</td><td><code>{SITE_KEY}</code> (public)</td></tr>
+    <tr><td>secret key</td><td><code>TURNSTILE_SECRET_KEY</code> (pages env var, encrypted)</td></tr>
+    <tr><td>verify endpoint</td><td><code>/api/turnstile-verify</code></td></tr>
+  </table>
+
+  <style>
+    .ts-form { display: flex; flex-direction: column; gap: .75rem; max-width: 500px; }
+    .ts-form label { display: flex; flex-direction: column; gap: .25rem; }
+    .ts-form input, .ts-form textarea {
+      background: #1a1a1a; color: #e6e6e6; border: 1px solid #333;
+      padding: .5rem; font-family: inherit;
+    }
+  </style>
+
+  <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+  <script>
+    const form = document.getElementById('ts-form');
+    const out = document.getElementById('log-out');
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const fd = new FormData(form);
+      const token = fd.get('cf-turnstile-response');
+      if (!token) {
+        out.innerHTML = '<div class="line err">no turnstile token in form. complete the challenge first.</div>';
+        return;
+      }
+      out.innerHTML = '<span class="dim">verifying token server-side...</span>';
+      const res = await fetch('/api/turnstile-verify', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          token,
+          name: fd.get('name'),
+          message: fd.get('message'),
+        }),
+      });
+      const j = await res.json();
+      const cls = j.success ? 'ok' : 'err';
+      out.innerHTML = `
+        <div class="line ${cls}">success: ${j.success}</div>
+        <div class="line">status: ${res.status}</div>
+        <div class="line dim">verify response: ${JSON.stringify(j.verify || {}, null, 2)}</div>
+      `;
+    });
+  </script>
+</Layout>

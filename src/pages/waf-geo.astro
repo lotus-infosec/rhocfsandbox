@@ -1,0 +1,68 @@
+---
+import Layout from '../layouts/Layout.astro';
+---
+<Layout title="waf-geo — rhocfsandbox" active="demos">
+  <h1><span class="prompt">demo: waf custom rule → geo block (US)</span></h1>
+  <p class="dim">
+    a waf custom rule blocks any request from a US ip address on this
+    endpoint. if you are in the US, you'll see the branded 403 block page.
+    if you are outside the US, the endpoint returns 200 with your detected
+    country. test both by hopping on a vpn.
+  </p>
+
+  <h2># trigger the geo rule</h2>
+  <p class="dim">
+    the button below fires <code>fetch('/api/geo-check')</code>. the waf rule
+    also matches on the raw path <code>/waf-geo-block</code>, so a full-page
+    navigation there will show the branded 403 directly.
+  </p>
+  <div class="btn-row">
+    <button class="demo" id="fetch-btn">fetch /api/geo-check</button>
+    <a class="demo danger" href="/waf-geo-block">navigate to /waf-geo-block</a>
+  </div>
+  <div class="log-out" id="log-out"><span class="dim">click a button…</span></div>
+
+  <h2># or from your terminal</h2>
+  <pre><code># from a US ip → 403 branded block page
+curl -i "https://rhocfsandbox.com/api/geo-check"
+
+# from a non-US ip → 200 with detected country
+curl -s "https://rhocfsandbox.com/api/geo-check" | jq</code></pre>
+
+  <h2># what's the rule</h2>
+  <table class="kv">
+    <tr><td>rule name</td><td><code>SITE_waf_geo_us_block</code></td></tr>
+    <tr><td>expression</td><td><code>(http.request.uri.path eq "/api/geo-check" or http.request.uri.path eq "/waf-geo-block") and ip.geoip.country eq "US"</code></td></tr>
+    <tr><td>action</td><td>block · custom html response (403) · message includes country</td></tr>
+  </table>
+
+  <script>
+    const btn = document.getElementById('fetch-btn');
+    const out = document.getElementById('log-out');
+    btn.addEventListener('click', async () => {
+      out.innerHTML = '<span class="dim">fetching /api/geo-check ...</span>';
+      try {
+        const t0 = performance.now();
+        const res = await fetch('/api/geo-check', { cache: 'no-store' });
+        const ms = Math.round(performance.now() - t0);
+        const cls = res.ok ? 'ok' : 'err';
+        const ray = res.headers.get('cf-ray') || 'n/a';
+        const mit = res.headers.get('cf-mitigated') || 'none';
+        let body = '';
+        try {
+          const j = await res.json();
+          body = `<div class="line dim">body: ${JSON.stringify(j)}</div>`;
+        } catch { body = '<div class="line dim">body: (non-json, likely branded block page)</div>'; }
+        out.innerHTML = `
+          <div class="line ${cls}">status: ${res.status} ${res.statusText}</div>
+          <div class="line">cf-ray: ${ray}</div>
+          <div class="line">cf-mitigated: ${mit}</div>
+          ${body}
+          <div class="line dim">round trip: ${ms}ms</div>
+        `;
+      } catch (e) {
+        out.innerHTML = `<div class="line err">fetch failed: ${e.message}</div>`;
+      }
+    });
+  </script>
+</Layout>

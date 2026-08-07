@@ -1,0 +1,81 @@
+---
+import Layout from '../layouts/Layout.astro';
+---
+<Layout title="ratelimit-per-user — rhocfsandbox" active="demos">
+  <h1><span class="prompt">demo: rate limit by header (advanced rate limiting)</span></h1>
+  <p class="dim">
+    a single cloudflare rate limit rule counts by the value of the
+    <code>x-user-id</code> header (not ip). each user id has its own bucket:
+    5 requests per 10 seconds. hammer the endpoint as <code>user-a</code>
+    and <code>user-b</code> and both will start getting 429 after the 5th
+    request. hammer as <code>user-c</code> at a slower rate and it stays
+    under the limit. that's the whole point of advanced rate limiting —
+    counting on a signal that actually identifies who is making the request,
+    not the ip address of a corporate proxy.
+  </p>
+
+  <h2># pick a user, fire 8 requests</h2>
+  <div class="btn-row">
+    <button class="demo" data-user="user-a">hammer as user-a</button>
+    <button class="demo" data-user="user-b">hammer as user-b</button>
+    <button class="demo" data-user="user-c">hammer as user-c (slow, under limit)</button>
+  </div>
+  <div class="log-out" id="log-out"><span class="dim">click a button…</span></div>
+
+  <h2># or from your terminal</h2>
+  <pre><code>{`# hammer as user-a: requests 6-8 will return 429
+for i in $(seq 1 8); do
+  curl -s -o /dev/null -w "user-a req %s → %{http_code}\\n" $i \\
+    -H "x-user-id: user-a" "https://rhocfsandbox.com/api/ratelimit-per-user"
+done
+
+# meanwhile user-b has its own independent bucket
+curl -s -o /dev/null -w "user-b req 1 → %{http_code}\\n" \\
+  -H "x-user-id: user-b" "https://rhocfsandbox.com/api/ratelimit-per-user"`}</code></pre>
+
+  <h2># what's the rule</h2>
+  <table class="kv">
+    <tr><td>rule name</td><td><code>SITE_ratelimit_per_user</code></td></tr>
+    <tr><td>expression</td><td><code>http.request.uri.path eq "/api/ratelimit-per-user"</code></td></tr>
+    <tr><td>characteristics</td><td><code>http.request.headers["x-user-id"]</code> + <code>cf.colo.id</code></td></tr>
+    <tr><td>counting</td><td>5 requests per 10 seconds</td></tr>
+    <tr><td>mitigation timeout</td><td>10 seconds</td></tr>
+    <tr><td>action</td><td>block · custom html response (429)</td></tr>
+  </table>
+
+  <script>
+    const out = document.getElementById('log-out');
+    const buttons = document.querySelectorAll('button.demo[data-user]');
+    buttons.forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const user = btn.getAttribute('data-user');
+        buttons.forEach(b => b.disabled = true);
+        const rows = [];
+        const isSlow = user === 'user-c';
+        const gap = isSlow ? 2500 : 100; // user-c: 2.5s between requests, others: 100ms
+        out.innerHTML = `<div class="line dim">hammering as ${user} (8 requests${isSlow ? ', slow' : ''})...</div>`;
+        for (let i = 1; i <= 8; i++) {
+          const t0 = performance.now();
+          let status = 0;
+          try {
+            const res = await fetch('/api/ratelimit-per-user', {
+              headers: { 'x-user-id': user },
+              cache: 'no-store',
+            });
+            status = res.status;
+          } catch (e) {
+            rows.push(`<div class="line err">req ${i}: fetch failed — ${e.message}</div>`);
+            out.innerHTML = rows.join('');
+            break;
+          }
+          const ms = Math.round(performance.now() - t0);
+          const cls = status === 200 ? 'ok' : 'err';
+          rows.push(`<div class="line ${cls}">${user} req ${i}: ${status}   ${ms}ms</div>`);
+          out.innerHTML = rows.join('');
+          if (i < 8) await new Promise(r => setTimeout(r, gap));
+        }
+        buttons.forEach(b => b.disabled = false);
+      });
+    });
+  </script>
+</Layout>

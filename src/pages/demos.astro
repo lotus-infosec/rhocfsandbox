@@ -48,9 +48,25 @@ import Layout from '../layouts/Layout.astro';
       <h3>rate limiting <span class="badge live">live</span></h3>
       <p class="dim">hammer button fires 20 requests; watch requests 11+ come back as 429 from the edge.</p>
     </a>
+    <a href="/ratelimit-per-user/" class="card">
+      <h3>rate limit by header <span class="badge live">live</span></h3>
+      <p class="dim">advanced rate limiting counting by <code>x-user-id</code>. each user id has its own bucket.</p>
+    </a>
     <a href="/waf-sensitive-data/" class="card">
       <h3>sensitive data detection <span class="badge live">live</span></h3>
       <p class="dim">synthetic pii on two path prefixes: one logged, one blocked. sdd inspects response bodies at egress.</p>
+    </a>
+    <a href="/waf-owasp/" class="card">
+      <h3>managed rulesets (owasp) <span class="badge live">live</span></h3>
+      <p class="dim">three buttons: safe / xss / sqli. cloudflare managed + owasp core block the malicious payloads at the edge.</p>
+    </a>
+    <a href="/waf-geo/" class="card">
+      <h3>geo block <span class="badge live">live</span></h3>
+      <p class="dim">waf custom rule blocking US ips. dynamic message names your country. hop on a vpn to see the difference.</p>
+    </a>
+    <a href="/ai-scrapers/" class="card">
+      <h3>block ai scrapers <span class="badge live">live</span></h3>
+      <p class="dim">waf custom rule matching gptbot / claudebot / perplexitybot. curl + in-browser fetch demos.</p>
     </a>
     <a href="/custom-errors/" class="card">
       <h3>branded error pages <span class="badge live">live</span></h3>
@@ -60,10 +76,18 @@ import Layout from '../layouts/Layout.astro';
       <h3>cache rules <span class="badge info">coming soon</span></h3>
       <p class="dim">a set of routes with different cache behaviors — bypass, standard, cache-everything — plus headers showing the cache status.</p>
     </div>
-    <div class="card">
-      <h3>bot management <span class="badge info">coming soon</span></h3>
-      <p class="dim">an endpoint that echoes cloudflare's bot score and verified-bot signals for the incoming request.</p>
-    </div>
+  </div>
+
+  <h2># bots + humans</h2>
+  <div class="grid">
+    <a href="/bot-score/" class="card">
+      <h3>bot score reflection <span class="badge live">live</span></h3>
+      <p class="dim">echoes cloudflare's bot management signals for your request. compare browser vs curl.</p>
+    </a>
+    <a href="/turnstile/" class="card">
+      <h3>turnstile widget <span class="badge live">live</span></h3>
+      <p class="dim">contact-form-shaped page with a turnstile challenge. server-side siteverify before accepting.</p>
+    </a>
   </div>
 
   <h2># developer platform</h2>

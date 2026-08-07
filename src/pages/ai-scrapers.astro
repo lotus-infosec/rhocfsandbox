@@ -1,0 +1,75 @@
+---
+import Layout from '../layouts/Layout.astro';
+---
+<Layout title="ai-scrapers — rhocfsandbox" active="demos">
+  <h1><span class="prompt">demo: block ai scrapers at the edge</span></h1>
+  <p class="dim">
+    a waf custom rule blocks known ai crawler user-agents (gptbot, claudebot,
+    perplexitybot) on <code>/api/ai-probe</code>. because browsers refuse to
+    let javascript spoof user-agent, the rule also matches the demo header
+    <code>x-test-bot: gptbot</code> so we can trigger the block from the
+    button below.
+  </p>
+
+  <h2># method 1: curl (any terminal)</h2>
+  <pre><code># spoof a known ai crawler UA
+curl -i -A "GPTBot/1.0" "https://rhocfsandbox.com/api/ai-probe"
+
+# other UAs the rule matches
+curl -i -A "ClaudeBot/1.0" "https://rhocfsandbox.com/api/ai-probe"
+curl -i -A "PerplexityBot/1.0" "https://rhocfsandbox.com/api/ai-probe"
+
+# a normal browser UA passes through → 200
+curl -i -A "Mozilla/5.0" "https://rhocfsandbox.com/api/ai-probe"</code></pre>
+
+  <h2># method 2: in-page fetch (this button)</h2>
+  <p class="dim">
+    fires <code>fetch()</code> with the alternate header. browsers won't let
+    us set user-agent, so the rule matches on <code>x-test-bot</code> for
+    the browser flow.
+  </p>
+  <div class="btn-row">
+    <button class="demo" id="allow-btn">fetch as normal browser (allow)</button>
+    <button class="demo danger" id="block-btn">fetch as ai scraper (block)</button>
+  </div>
+  <div class="log-out" id="log-out"><span class="dim">click a button…</span></div>
+
+  <h2># what's the rule</h2>
+  <table class="kv">
+    <tr><td>rule name</td><td><code>SITE_ai_scraper_block</code></td></tr>
+    <tr><td>expression</td><td><code>http.request.uri.path eq "/api/ai-probe" and (lower(http.user_agent) contains "gptbot" or lower(http.user_agent) contains "claudebot" or lower(http.user_agent) contains "perplexitybot" or any(http.request.headers["x-test-bot"][*] contains "gptbot"))</code></td></tr>
+    <tr><td>action</td><td>block · custom html response (403)</td></tr>
+  </table>
+  <p class="dim">
+    cloudflare also ships a zone-wide managed toggle ("block ai scrapers and
+    crawlers") that maintains this list for you. for the demo we use a
+    scoped custom rule so it only fires on the demo endpoint.
+  </p>
+
+  <script>
+    const allowBtn = document.getElementById('allow-btn');
+    const blockBtn = document.getElementById('block-btn');
+    const out = document.getElementById('log-out');
+
+    async function run(label, headers) {
+      out.innerHTML = `<span class="dim">${label}...</span>`;
+      try {
+        const t0 = performance.now();
+        const res = await fetch('/api/ai-probe', { headers, cache: 'no-store' });
+        const ms = Math.round(performance.now() - t0);
+        const cls = res.ok ? 'ok' : 'err';
+        const ray = res.headers.get('cf-ray') || 'n/a';
+        out.innerHTML = `
+          <div class="line ${cls}">${label}</div>
+          <div class="line ${cls}">status: ${res.status} ${res.statusText}</div>
+          <div class="line">cf-ray: ${ray}</div>
+          <div class="line dim">round trip: ${ms}ms</div>
+        `;
+      } catch (e) {
+        out.innerHTML = `<div class="line err">fetch failed: ${e.message}</div>`;
+      }
+    }
+    allowBtn.addEventListener('click', () => run('allow: no bot header', {}));
+    blockBtn.addEventListener('click', () => run('block: x-test-bot: gptbot', { 'x-test-bot': 'gptbot' }));
+  </script>
+</Layout>

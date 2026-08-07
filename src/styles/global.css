@@ -281,6 +281,23 @@ button.demo.warn:hover, a.demo.warn:hover {
   color: var(--bg);
 }
 
+button.demo:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+button.demo:disabled:hover {
+  background: var(--bg-elev);
+  color: var(--accent);
+  border-color: var(--accent-dim);
+}
+
+.btn-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  margin: 0.75rem 0;
+}
+
 .callout {
   background: var(--bg-elev);
   border-left: 3px solid var(--accent);
