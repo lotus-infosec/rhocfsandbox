@@ -1,0 +1,65 @@
+#!/usr/bin/env bash
+# rhocfsandbox pre-commit secret scan
+# Blocks commits containing plausible secret material.
+#
+# Enable once per clone:
+#   git config core.hooksPath .githooks
+#
+# Bypass in an emergency (use sparingly, document why):
+#   git commit --no-verify
+
+set -eu
+
+RED=$'\033[31m'
+YEL=$'\033[33m'
+GRN=$'\033[32m'
+DIM=$'\033[2m'
+OFF=$'\033[0m'
+
+# Only inspect added lines in the staged diff.
+# Skip the hook itself and package-lock.json.
+# `|| true` at each grep so empty results (no matches, exit 1) don't kill the script under `set -e`.
+STAGED_ADDS=$( { git diff --cached --diff-filter=ACMR -U0 -- ':!package-lock.json' ':!.githooks/**' || true; } | { grep -E '^\+' || true; } | { grep -vE '^\+\+\+ ' || true; } )
+
+if [ -z "$STAGED_ADDS" ]; then
+  exit 0
+fi
+
+# Patterns that plausibly indicate secret material.
+#   cfat_          Cloudflare API token prefix
+#   Bearer <long>  bearer token in code (not header realm)
+#   [Aa]ccount id / [Zz]one id assigned to a 32-hex value
+#   api_key / api-key / apikey = <20+ chars>
+#   password = <chars>
+#   Any 32+ char hex string on its own (potential UUID/ID leak)
+SUSPICIOUS=$(printf '%s\n' "$STAGED_ADDS" | grep -inE \
+  'cfat_|Bearer[[:space:]]+[A-Za-z0-9_-]{20,}|[Aa]ccount[_-]?[Ii]d[[:space:]]*[=:][[:space:]]*['"'"'"]?[a-f0-9]{32,}|[Zz]one[_-]?[Ii]d[[:space:]]*[=:][[:space:]]*['"'"'"]?[a-f0-9]{32,}|api[_-]?key[[:space:]]*=[[:space:]]*['"'"'"]?[A-Za-z0-9]{20,}|password[[:space:]]*[=:][[:space:]]*['"'"'"]?[^[:space:]'"'"'"]{6,}|[a-f0-9]{32,}' \
+  || true)
+
+if [ -z "$SUSPICIOUS" ]; then
+  echo "${GRN}✓${OFF} pre-commit secret scan clean"
+  exit 0
+fi
+
+# Filter out known-safe patterns (demo content, header names, etc).
+FILTERED=$(printf '%s\n' "$SUSPICIOUS" | grep -vE \
+  "sandbox-cfat-X{20,}|API_KEY=sandbox-cfat-X|Bearer realm=|www-authenticate.*Bearer|['\"]bearer['\"]|// bearer|# bearer|imagine an authenticated api rejecting a missing token|plausibly-shaped fake token|shaped like a plausible token|contains no valid material|no valid material|apikey:[[:space:]]|apikey[[:space:]]*=[[:space:]]*\{|GET /api/sensitive-.*apikey|/api/sensitive-.*apikey|- apikey is a plausibly|sensitive-log/apikey|sensitive-block/apikey|4111[[:space:]]?1111[[:space:]]?1111[[:space:]]?1111" \
+  || true)
+
+if [ -z "$FILTERED" ]; then
+  echo "${GRN}✓${OFF} pre-commit secret scan clean ${DIM}(known-safe demo strings only)${OFF}"
+  exit 0
+fi
+
+echo ""
+echo "${RED}✗ pre-commit secret scan FAILED${OFF}"
+echo ""
+echo "${YEL}The following staged lines look like secret material:${OFF}"
+echo ""
+printf '%s\n' "$FILTERED" | sed "s/^/  ${DIM}│${OFF} /"
+echo ""
+echo "${YEL}If these are false positives, add them to the allowlist in .githooks/pre-commit${OFF}"
+echo "${YEL}If they are real secrets, remove them before committing.${OFF}"
+echo "${DIM}Emergency bypass (document the reason):  git commit --no-verify${OFF}"
+echo ""
+exit 1
