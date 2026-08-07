@@ -240,8 +240,102 @@ ul.plain li::before {
   50% { opacity: 0; }
 }
 
+button.demo, a.demo {
+  display: inline-block;
+  background: var(--bg-elev);
+  color: var(--accent);
+  border: 1px solid var(--accent-dim);
+  padding: 0.55rem 1rem;
+  border-radius: 4px;
+  font-family: var(--mono);
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.12s ease;
+  margin: 0.25rem 0.5rem 0.25rem 0;
+}
+
+button.demo:hover, a.demo:hover {
+  background: var(--accent);
+  color: var(--bg);
+  border-color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+
+button.demo.danger, a.demo.danger {
+  color: var(--red);
+  border-color: var(--red);
+}
+
+button.demo.danger:hover, a.demo.danger:hover {
+  background: var(--red);
+  color: var(--bg);
+}
+
+button.demo.warn, a.demo.warn {
+  color: var(--yellow);
+  border-color: var(--yellow);
+}
+
+button.demo.warn:hover, a.demo.warn:hover {
+  background: var(--yellow);
+  color: var(--bg);
+}
+
+.callout {
+  background: var(--bg-elev);
+  border-left: 3px solid var(--accent);
+  padding: 0.75rem 1rem;
+  border-radius: 4px;
+  margin: 1rem 0;
+}
+
+.callout.warn { border-left-color: var(--yellow); }
+.callout.info { border-left-color: var(--blue); }
+.callout.chill { border-left-color: var(--fg-mute); }
+
+.log-out {
+  background: var(--bg-elev);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 0.75rem;
+  font-size: 0.8rem;
+  max-height: 300px;
+  overflow-y: auto;
+  margin-top: 0.75rem;
+}
+
+.log-out .line { padding: 0.15rem 0; }
+.log-out .line.ok { color: var(--green); }
+.log-out .line.err { color: var(--red); }
+.log-out .line.warn { color: var(--yellow); }
+
+.error-hero {
+  text-align: center;
+  padding: 3rem 1rem;
+}
+
+.error-hero .code {
+  font-size: 5rem;
+  color: var(--accent);
+  font-weight: 600;
+  line-height: 1;
+  margin-bottom: 0.5rem;
+}
+
+.error-hero .msg {
+  font-size: 1.2rem;
+  color: var(--fg);
+  margin-bottom: 0.5rem;
+}
+
+.error-hero .sub {
+  color: var(--fg-dim);
+  margin-bottom: 2rem;
+}
+
 @media (max-width: 600px) {
   body { padding: 1rem; font-size: 13px; }
   header.site { flex-direction: column; align-items: flex-start; }
   table.kv td:first-child { width: 130px; }
+  .error-hero .code { font-size: 3.5rem; }
 }

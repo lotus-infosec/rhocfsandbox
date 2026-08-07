@@ -1,0 +1,74 @@
+---
+import Layout from '../layouts/Layout.astro';
+---
+<Layout title="waf-ratelimit — rhocfsandbox" active="demos">
+  <h1><span class="prompt">demo: advanced rate limiting</span></h1>
+  <p class="dim">
+    a rate limit rule on <code>/api/ratelimit-me</code>: <strong>10 requests per 10
+    seconds</strong> per source ip, with a <strong>10 second</strong> mitigation
+    timeout. hit the button to fire 20 rapid requests. requests 11-20 come back as
+    <code>429</code> from cloudflare's edge — the origin function never runs.
+  </p>
+
+  <h2># hammer it (browser)</h2>
+  <button class="demo warn" id="hammer">fire 20 requests</button>
+  <button class="demo" id="clear">clear log</button>
+  <div class="log-out" id="log"><span class="dim">click "fire 20 requests" to start…</span></div>
+
+  <h2># hammer it (curl)</h2>
+  <pre><code>{`for i in $(seq 1 20); do
+  curl -s -o /dev/null -w "req %2d → %{http_code}\\n" $i "https://rhocfsandbox.com/api/ratelimit-me"
+done`}</code></pre>
+
+  <h2># what's the rule</h2>
+  <table class="kv">
+    <tr><td>ruleset</td><td>zone → security → waf → rate limiting rules</td></tr>
+    <tr><td>rule name</td><td><code>SITE_ratelimit_hammer</code></td></tr>
+    <tr><td>characteristic</td><td>source ip</td></tr>
+    <tr><td>threshold</td><td>10 requests / 10 seconds</td></tr>
+    <tr><td>mitigation timeout</td><td>10 seconds</td></tr>
+    <tr><td>action</td><td>block · custom html response (429)</td></tr>
+  </table>
+
+  <div class="callout chill">
+    <strong>the talking point:</strong> advanced rate limiting can key on almost
+    any request signal — ip, header value, session cookie, jwt claim, path
+    variable. combine multiple to differentiate real users from abusive scripts,
+    e.g. rate limit per <code>user id</code> instead of per ip so shared
+    corporate outbound ips don't false-positive.
+  </div>
+
+  <script>
+    const btn = document.getElementById('hammer');
+    const clr = document.getElementById('clear');
+    const log = document.getElementById('log');
+
+    clr.addEventListener('click', () => { log.innerHTML = '<span class="dim">cleared. click "fire 20 requests" to start…</span>'; });
+
+    btn.addEventListener('click', async () => {
+      btn.disabled = true;
+      log.innerHTML = '';
+      const results = [];
+      for (let i = 1; i <= 20; i++) {
+        const t0 = performance.now();
+        try {
+          const res = await fetch('/api/ratelimit-me?n=' + i, { cache: 'no-store' });
+          const ms = Math.round(performance.now() - t0);
+          const cls = res.status === 200 ? 'ok' : (res.status === 429 ? 'err' : 'warn');
+          const line = document.createElement('div');
+          line.className = 'line ' + cls;
+          line.textContent = `req ${String(i).padStart(2, ' ')} → ${res.status} ${res.statusText}  (${ms}ms)`;
+          log.appendChild(line);
+          log.scrollTop = log.scrollHeight;
+        } catch (e) {
+          const line = document.createElement('div');
+          line.className = 'line err';
+          line.textContent = `req ${i} failed: ${e.message}`;
+          log.appendChild(line);
+        }
+        await new Promise(r => setTimeout(r, 50));
+      }
+      btn.disabled = false;
+    });
+  </script>
+</Layout>

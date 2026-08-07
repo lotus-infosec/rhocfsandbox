@@ -1,0 +1,38 @@
+---
+import Layout from '../layouts/Layout.astro';
+---
+<Layout title="waf-block-me — rhocfsandbox" active="demos">
+  <h1><span class="prompt">demo: waf custom rule → block</span></h1>
+  <p class="dim">
+    this page loads normally. a cloudflare waf custom rule is watching for a specific
+    query parameter. hit the button (or reload the url with that parameter) and the
+    request never reaches this page. cloudflare responds with a branded block
+    response at the edge.
+  </p>
+
+  <h2># trigger it (browser)</h2>
+  <p>click below. the page will navigate to <code>?trigger=please</code> and cloudflare will intercept.</p>
+  <a class="demo danger" href="/waf-block-me?trigger=please">block me now</a>
+
+  <h2># trigger it (curl)</h2>
+  <pre><code>curl -i "https://rhocfsandbox.com/waf-block-me?trigger=please"</code></pre>
+  <p class="dim">
+    expected response: <code>HTTP/2 403</code> with the branded block html.
+    the <code>cf-ray</code> and <code>cf-mitigated</code> headers confirm which rule fired.
+  </p>
+
+  <h2># what's the rule</h2>
+  <table class="kv">
+    <tr><td>ruleset</td><td>zone → security → waf → custom rules</td></tr>
+    <tr><td>rule name</td><td><code>SITE_waf_block_me</code></td></tr>
+    <tr><td>expression</td><td><code>http.request.uri.path eq "/waf-block-me" and http.request.uri.query contains "trigger=please"</code></td></tr>
+    <tr><td>action</td><td>block · custom html response (403)</td></tr>
+  </table>
+
+  <div class="callout chill">
+    <strong>the talking point:</strong> cloudflare's waf can match on any request property
+    (path, query, header, method, geo, asn, tls fingerprint, bot score). here we used
+    a query string for demo convenience. in the real world you'd match on threat
+    indicators (payloads, malicious ips, known-bad user agents, rate anomalies).
+  </div>
+</Layout>

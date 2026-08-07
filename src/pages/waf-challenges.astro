@@ -1,0 +1,49 @@
+---
+import Layout from '../layouts/Layout.astro';
+---
+<Layout title="waf-challenges — rhocfsandbox" active="demos">
+  <h1><span class="prompt">demo: waf custom rule → challenge</span></h1>
+  <p class="dim">
+    two flavors of challenge, both configured as waf custom rules on this exact path.
+    hit either button and cloudflare will interrupt with its challenge ui before
+    letting you back through. challenge ui is served by cloudflare's edge, not by
+    this site.
+  </p>
+
+  <h2># managed challenge</h2>
+  <p class="dim">
+    cloudflare picks the right challenge for the visitor's risk profile: often invisible,
+    sometimes a click, rarely interactive. most humans breeze through.
+  </p>
+  <a class="demo warn" href="/waf-challenges?challenge=managed">try managed challenge</a>
+
+  <h2># interactive challenge</h2>
+  <p class="dim">
+    always requires a user gesture (click, hold, or drag). used when you want strong
+    human-presence signal — for example, protecting a login or checkout page.
+  </p>
+  <a class="demo warn" href="/waf-challenges?challenge=interactive">try interactive challenge</a>
+
+  <h2># curl (for the terminal humans)</h2>
+  <pre><code>curl -i "https://rhocfsandbox.com/waf-challenges?challenge=managed"
+curl -i "https://rhocfsandbox.com/waf-challenges?challenge=interactive"</code></pre>
+  <p class="dim">
+    from curl you'll get the challenge html back (status <code>403</code> with
+    <code>cf-mitigated: challenge</code>). curl can't solve it — challenges need
+    a real browser. that's the point.
+  </p>
+
+  <h2># what's the rule</h2>
+  <table class="kv">
+    <tr><td>rule 1</td><td><code>SITE_waf_challenge_managed</code> → managed challenge</td></tr>
+    <tr><td>rule 2</td><td><code>SITE_waf_challenge_interactive</code> → interactive challenge</td></tr>
+    <tr><td>match</td><td>path = <code>/waf-challenges</code>, query contains <code>challenge=&lt;kind&gt;</code></td></tr>
+  </table>
+
+  <div class="callout chill">
+    <strong>note on branding:</strong> the challenge screen itself is served by
+    cloudflare and only partially themable (logo, colors, contact link via zone
+    custom pages). the block action is fully customizable — see the branded block
+    on <a href="/waf-block-me">/waf-block-me</a>.
+  </div>
+</Layout>

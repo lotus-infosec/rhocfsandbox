@@ -1,0 +1,76 @@
+---
+import Layout from '../layouts/Layout.astro';
+---
+<Layout title="waf-ua — rhocfsandbox" active="demos">
+  <h1><span class="prompt">demo: waf custom rule → user-agent / header block</span></h1>
+  <p class="dim">
+    one waf rule, three ways to trigger it. matches on either
+    <code>user-agent contains "sqlmap"</code> or a custom
+    <code>x-test-bot: sqlmap</code> header — because browsers refuse to let
+    javascript spoof user-agent (real security constraint, worth noting to
+    your visitor).
+  </p>
+
+  <h2># method 1: curl (any terminal)</h2>
+  <pre><code># spoof user-agent
+curl -i -A "sqlmap-demo" "https://rhocfsandbox.com/waf-ua"
+
+# or send the alternate header
+curl -i -H "x-test-bot: sqlmap" "https://rhocfsandbox.com/waf-ua"</code></pre>
+
+  <h2># method 2: devtools (any browser)</h2>
+  <ul class="plain">
+    <li>open devtools → <code>...</code> menu → <strong>more tools → network conditions</strong></li>
+    <li>uncheck "use browser default" for user agent</li>
+    <li>type <code>sqlmap</code> into the custom field</li>
+    <li>reload this page — blocked at the edge</li>
+  </ul>
+
+  <h2># method 3: in-page fetch (this button)</h2>
+  <p class="dim">
+    the button below sends a background <code>fetch()</code> with the alternate
+    header and shows the response. because user-agent is on the browser's
+    "forbidden header names" list, we use <code>x-test-bot</code> instead — the
+    waf rule matches on either.
+  </p>
+  <button class="demo danger" id="fetch-btn">send blocked request</button>
+  <div class="log-out" id="log-out"><span class="dim">click the button…</span></div>
+
+  <h2># what's the rule</h2>
+  <table class="kv">
+    <tr><td>rule name</td><td><code>SITE_waf_ua_bot</code></td></tr>
+    <tr><td>expression</td><td><code>http.request.uri.path eq "/waf-ua" and (lower(http.user_agent) contains "sqlmap" or any(http.request.headers["x-test-bot"][*] contains "sqlmap"))</code></td></tr>
+    <tr><td>action</td><td>block · custom html response (403)</td></tr>
+  </table>
+
+  <div class="callout chill">
+    <strong>the talking point:</strong> attackers spoof user-agent trivially. the
+    waf's real value is stacking signals — ua + ip reputation + bot score + tls
+    fingerprint + request cadence — and acting on the composite. this demo shows
+    the mechanics; production rules combine multiple facets.
+  </div>
+
+  <script>
+    const btn = document.getElementById('fetch-btn');
+    const out = document.getElementById('log-out');
+    btn.addEventListener('click', async () => {
+      out.innerHTML = '<span class="dim">sending fetch with x-test-bot: sqlmap ...</span>';
+      try {
+        const t0 = performance.now();
+        const res = await fetch('/waf-ua', { headers: { 'x-test-bot': 'sqlmap' }, cache: 'no-store' });
+        const ms = Math.round(performance.now() - t0);
+        const cls = res.ok ? 'ok' : 'err';
+        const ray = res.headers.get('cf-ray') || 'n/a';
+        const mit = res.headers.get('cf-mitigated') || 'none';
+        out.innerHTML = `
+          <div class="line ${cls}">status: ${res.status} ${res.statusText}</div>
+          <div class="line">cf-ray: ${ray}</div>
+          <div class="line">cf-mitigated: ${mit}</div>
+          <div class="line dim">round trip: ${ms}ms</div>
+        `;
+      } catch (e) {
+        out.innerHTML = `<div class="line err">fetch failed: ${e.message}</div>`;
+      }
+    });
+  </script>
+</Layout>

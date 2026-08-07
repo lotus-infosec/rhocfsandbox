@@ -30,16 +30,32 @@ import Layout from '../layouts/Layout.astro';
     </div>
   </div>
 
-  <h2># application services</h2>
+  <h2># application services / waf</h2>
   <div class="grid">
-    <div class="card">
-      <h3>waf managed rules <span class="badge info">coming soon</span></h3>
-      <p class="dim">endpoints crafted to trigger specific owasp / cloudflare managed rulesets so you can see the waf's decision live.</p>
-    </div>
-    <div class="card">
-      <h3>rate limiting <span class="badge info">coming soon</span></h3>
-      <p class="dim">a route with an intentionally aggressive rate limit configured, plus a small client to demonstrate the throttling behavior.</p>
-    </div>
+    <a href="/waf-block-me/" class="card">
+      <h3>waf: custom rule block <span class="badge live">live</span></h3>
+      <p class="dim">button-triggered edge block. custom branded 403 response. curl equivalent shown on the page.</p>
+    </a>
+    <a href="/waf-challenges/" class="card">
+      <h3>waf: managed + interactive challenge <span class="badge live">live</span></h3>
+      <p class="dim">both challenge flavors, one page. see the difference between "cloudflare picks" and "always require a click".</p>
+    </a>
+    <a href="/waf-ua/" class="card">
+      <h3>waf: user-agent / header block <span class="badge live">live</span></h3>
+      <p class="dim">three ways to trigger: curl, devtools override, in-page fetch. shows why edge validation beats client trust.</p>
+    </a>
+    <a href="/waf-ratelimit/" class="card">
+      <h3>rate limiting <span class="badge live">live</span></h3>
+      <p class="dim">hammer button fires 20 requests; watch requests 11+ come back as 429 from the edge.</p>
+    </a>
+    <a href="/waf-sensitive-data/" class="card">
+      <h3>sensitive data detection <span class="badge live">live</span></h3>
+      <p class="dim">synthetic pii on two path prefixes: one logged, one blocked. sdd inspects response bodies at egress.</p>
+    </a>
+    <a href="/custom-errors/" class="card">
+      <h3>branded error pages <span class="badge live">live</span></h3>
+      <p class="dim">401 / 403 / 404 / 429 in matching aesthetic. some served by pages, some by cloudflare's edge.</p>
+    </a>
     <div class="card">
       <h3>cache rules <span class="badge info">coming soon</span></h3>
       <p class="dim">a set of routes with different cache behaviors — bypass, standard, cache-everything — plus headers showing the cache status.</p>

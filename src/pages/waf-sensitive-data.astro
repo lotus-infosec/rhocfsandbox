@@ -1,0 +1,61 @@
+---
+import Layout from '../layouts/Layout.astro';
+---
+<Layout title="waf-sensitive-data — rhocfsandbox" active="demos">
+  <h1><span class="prompt">demo: sensitive data detection (sdd)</span></h1>
+  <p class="dim">
+    two path prefixes, same synthetic payloads, different waf actions. cloudflare
+    inspects response bodies at egress against the sensitive data managed ruleset
+    (ssn, credit card, api key, email, phone), then either logs a finding or
+    blocks the response. all values below are synthetic — reserved-invalid or
+    industry test values.
+  </p>
+
+  <h2># log endpoints</h2>
+  <p class="dim">
+    return the payload, sdd matches, finding shows up in security events. no
+    visible impact to the client.
+  </p>
+  <div class="grid">
+    <a href="/api/sensitive-log/ssn" class="card"><h3>GET /api/sensitive-log/ssn</h3><p class="dim">synthetic ssn (reserved-invalid <code>000-xx</code> range)</p></a>
+    <a href="/api/sensitive-log/cc" class="card"><h3>GET /api/sensitive-log/cc</h3><p class="dim">industry test visa <code>4111 1111 1111 1111</code></p></a>
+    <a href="/api/sensitive-log/email" class="card"><h3>GET /api/sensitive-log/email</h3><p class="dim">example.com address</p></a>
+    <a href="/api/sensitive-log/phone" class="card"><h3>GET /api/sensitive-log/phone</h3><p class="dim">reserved <code>555-01xx</code> range</p></a>
+    <a href="/api/sensitive-log/apikey" class="card"><h3>GET /api/sensitive-log/apikey</h3><p class="dim">plausibly-shaped fake token</p></a>
+  </div>
+
+  <h2># block endpoints</h2>
+  <p class="dim">
+    same payloads, but the sdd rule action here is <code>block</code>. the origin
+    function still runs, cloudflare inspects the response, matches the detector,
+    and replaces the body with a block page before it leaves the edge.
+  </p>
+  <div class="grid">
+    <a href="/api/sensitive-block/ssn" class="card"><h3>GET /api/sensitive-block/ssn</h3><p class="dim">expect <code>403</code></p></a>
+    <a href="/api/sensitive-block/cc" class="card"><h3>GET /api/sensitive-block/cc</h3><p class="dim">expect <code>403</code></p></a>
+    <a href="/api/sensitive-block/email" class="card"><h3>GET /api/sensitive-block/email</h3><p class="dim">expect <code>403</code></p></a>
+    <a href="/api/sensitive-block/phone" class="card"><h3>GET /api/sensitive-block/phone</h3><p class="dim">expect <code>403</code></p></a>
+    <a href="/api/sensitive-block/apikey" class="card"><h3>GET /api/sensitive-block/apikey</h3><p class="dim">expect <code>403</code></p></a>
+  </div>
+
+  <h2># from curl</h2>
+  <pre><code># log path — should return 200 with the synthetic payload
+curl -i https://rhocfsandbox.com/api/sensitive-log/cc
+
+# block path — should return 403 with cloudflare's block body
+curl -i https://rhocfsandbox.com/api/sensitive-block/cc</code></pre>
+
+  <h2># where to look on the cloudflare side</h2>
+  <ul class="plain">
+    <li><strong>security → security events</strong>: filter by ruleset "sensitive data detection"</li>
+    <li><strong>security → wAF → managed rulesets</strong>: deployment overrides for log vs block</li>
+    <li><strong>analytics → security analytics</strong>: sdd findings show up as a category</li>
+  </ul>
+
+  <div class="callout chill">
+    <strong>the talking point:</strong> sdd is body inspection at egress. same
+    engine as zero trust dlp, but applied to public web responses instead of
+    warp-tunneled traffic. useful when your api accidentally returns pii, or
+    when a compromised endpoint starts leaking.
+  </div>
+</Layout>

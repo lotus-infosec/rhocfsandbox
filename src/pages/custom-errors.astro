@@ -1,0 +1,28 @@
+---
+import Layout from '../layouts/Layout.astro';
+---
+<Layout title="custom-errors — rhocfsandbox" active="demos">
+  <h1><span class="prompt">demo: branded error pages</span></h1>
+  <p class="dim">
+    a set of matching error experiences. some are served by the site itself
+    (astro / pages functions), some by cloudflare's edge on waf and rate-limit
+    events. all share the same aesthetic so the visitor experience is coherent.
+  </p>
+
+  <h2># try them</h2>
+  <div class="grid">
+    <a href="/api/deny-401" class="card"><h3>401 unauthorized</h3><p class="dim">served by a pages function. imagine an authenticated api rejecting a missing token.</p></a>
+    <a href="/api/deny-403" class="card"><h3>403 forbidden</h3><p class="dim">served by a pages function. imagine an authorization check failing.</p></a>
+    <a href="/definitely-not-a-real-path" class="card"><h3>404 not found</h3><p class="dim">served by astro's built-in 404 slot on any unknown path.</p></a>
+    <a href="/waf-ratelimit" class="card"><h3>429 too many requests</h3><p class="dim">served by cloudflare's edge when rate limit fires. see the dedicated demo.</p></a>
+    <a href="/waf-block-me?trigger=please" class="card"><h3>403 waf block</h3><p class="dim">served by cloudflare's edge on a waf custom rule. same aesthetic, different origin.</p></a>
+  </div>
+
+  <div class="callout chill">
+    <strong>why branded errors matter:</strong> a generic "1020 access denied"
+    page is the sales anti-pattern. custom pages let you say what happened, who
+    to contact, and preserve trust — even during a block. all four codes here
+    are configurable per zone (custom pages) or per rule (waf custom response
+    body).
+  </div>
+</Layout>
