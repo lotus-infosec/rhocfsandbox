@@ -9,6 +9,13 @@ import Layout from '../layouts/Layout.astro';
     message asynchronously, "processes" it (uppercases the text), and
     stores the result in kv. the page polls for the result.
   </p>
+  <div class="callout">
+    <strong>expect 5-60s to first result.</strong> the consumer picks up
+    messages in ~1s but the result store is workers kv, which is eventually
+    consistent globally. depending on which colo processes the write vs.
+    which colo serves your poll, the result can take up to 60s to appear.
+    this is a real property of the platform, not a bug in the demo.
+  </div>
 
   <div class="btn-row">
     <input type="text" id="text-in" placeholder="type something to enqueue" maxlength="200" style="background:#1a1a1a;color:#e6e6e6;border:1px solid #333;padding:.5rem;min-width:300px;font-family:inherit;"/>
@@ -61,19 +68,19 @@ import Layout from '../layouts/Layout.astro';
         body: JSON.stringify({ text }),
       });
       const j = await r.json();
-      out.innerHTML = `<div class="line ok">queued. id=${j.id}</div><div class="line dim">polling for result…</div>`;
+      out.innerHTML = `<div class="line ok">queued. id=${j.id}</div><div class="line dim">polling every 2s (kv can take up to 60s to propagate)…</div>`;
       const start = Date.now();
-      for (let i = 0; i < 30; i++) {
-        await new Promise(r => setTimeout(r, 500));
-        const p = await fetch('/api/queue-status?id=' + j.id);
+      for (let i = 0; i < 40; i++) {
+        await new Promise(r => setTimeout(r, 2000));
+        const p = await fetch('/api/queue-status?id=' + j.id + '&t=' + Date.now());
         const pj = await p.json();
         if (!pj.pending && pj.output) {
           const ms = Date.now() - start;
-          out.innerHTML += `<div class="line ok">result in ${ms}ms: <code>${pj.output}</code></div><pre class="dim">${JSON.stringify(pj, null, 2)}</pre>`;
+          out.innerHTML += `<div class="line ok">result in ${(ms/1000).toFixed(1)}s: <code>${pj.output}</code></div><pre class="dim">${JSON.stringify(pj, null, 2)}</pre>`;
           return;
         }
       }
-      out.innerHTML += `<div class="line warn">timed out after 15s</div>`;
+      out.innerHTML += `<div class="line warn">still pending after 80s. kv propagation is unusually slow today, or the consumer errored. check the workers dashboard.</div>`;
     });
   </script>
 </Layout>
