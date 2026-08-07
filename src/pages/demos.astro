@@ -98,6 +98,18 @@ import Layout from '../layouts/Layout.astro';
     </a>
   </div>
 
+  <h2># load balancing</h2>
+  <div class="grid">
+    <a href="/lb-failover/" class="card">
+      <h3>origin failover <span class="badge live">live</span></h3>
+      <p class="dim">two workers as origins, one lb, one health monitor. disable a pool origin and watch traffic flip to the fallback pool.</p>
+    </a>
+    <a href="/lb-geo-steering/" class="card">
+      <h3>geo steering <span class="badge live">live</span></h3>
+      <p class="dim">same lb, region_pools map. na → pool-a. everywhere else → pool-b. vpn-test to see the flip.</p>
+    </a>
+  </div>
+
   <h2># bots + humans</h2>
   <div class="grid">
     <a href="/bot-score/" class="card">

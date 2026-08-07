@@ -1,0 +1,83 @@
+---
+import Layout from '../layouts/Layout.astro';
+---
+<Layout title="lb-failover — rhocfsandbox" active="demos">
+  <h1><span class="prompt">demo: load balancing → origin failover</span></h1>
+  <p class="dim">
+    a cloudflare load balancer sits in front of two workers (origin-a and
+    origin-b). the LB has a health monitor, a default pool (pool-a), and a
+    fallback pool (pool-b). when the primary pool's origin is healthy, all
+    traffic flows to pool-a. disable origin-a in the dashboard, wait for
+    the health monitor to mark it unhealthy, and traffic automatically
+    fails over to pool-b.
+  </p>
+
+  <div class="btn-row">
+    <button class="demo" id="fetch-btn">fetch lb-demo.rhocfsandbox.com × 5</button>
+    <button class="demo" id="both-btn">fetch each pool origin directly</button>
+  </div>
+  <div class="log-out" id="log-out"><span class="dim">click to fetch…</span></div>
+
+  <h2># how to trigger failover</h2>
+  <ol>
+    <li>dashboard → traffic → load balancing → pools</li>
+    <li>edit <code>SITE_lb_pool_a</code></li>
+    <li>toggle <code>origin-a</code> to disabled (or edit its address to break it)</li>
+    <li>save. within ~1 minute the health monitor marks pool_a unhealthy</li>
+    <li>refresh this page's fetch button — responses now come from origin-b (pool_b, the fallback)</li>
+    <li>toggle origin-a back on to restore normal routing</li>
+  </ol>
+
+  <h2># config</h2>
+  <table class="kv">
+    <tr><td>load balancer</td><td><code>lb-demo.rhocfsandbox.com</code></td></tr>
+    <tr><td>default pool</td><td><code>SITE_lb_pool_a</code></td></tr>
+    <tr><td>fallback pool</td><td><code>SITE_lb_pool_b</code></td></tr>
+    <tr><td>health monitor</td><td><code>SITE_lb_monitor</code> · HTTPS GET / · expect 200 · 60s interval</td></tr>
+    <tr><td>steering policy</td><td>geo (region_pools with WNAM/ENAM→A, everything else→B)</td></tr>
+    <tr><td>origins</td><td>2× cloudflare workers on workers.dev, each returns json identifying itself</td></tr>
+  </table>
+
+  <script>
+    const btn = document.getElementById('fetch-btn');
+    const bothBtn = document.getElementById('both-btn');
+    const out = document.getElementById('log-out');
+
+    btn.addEventListener('click', async () => {
+      out.innerHTML = '<span class="dim">firing 5 requests to lb-demo...</span>';
+      const rows = [];
+      for (let i = 1; i <= 5; i++) {
+        try {
+          const t0 = performance.now();
+          const res = await fetch('https://lb-demo.rhocfsandbox.com/?t=' + Date.now(), { cache: 'no-store' });
+          const ms = Math.round(performance.now() - t0);
+          const j = await res.json();
+          const cls = j.origin === 'a' ? 'ok' : 'warn';
+          rows.push(`<div class="line ${cls}">req ${i}: origin=${j.origin}  colo=${j.colo}  ${ms}ms</div>`);
+        } catch (e) {
+          rows.push(`<div class="line err">req ${i}: ${e.message}</div>`);
+        }
+        out.innerHTML = rows.join('');
+      }
+    });
+
+    bothBtn.addEventListener('click', async () => {
+      out.innerHTML = '<span class="dim">hitting each origin directly (bypasses LB)...</span>';
+      const urls = [
+        'https://site-lb-origin-a.rhomanie-demo-account.workers.dev/',
+        'https://site-lb-origin-b.rhomanie-demo-account.workers.dev/',
+      ];
+      const rows = [];
+      for (const u of urls) {
+        try {
+          const res = await fetch(u, { cache: 'no-store' });
+          const j = await res.json();
+          rows.push(`<div class="line ok">${u.replace(/^https?:\/\//,'')} → origin=${j.origin}  color=${j.color}</div>`);
+        } catch (e) {
+          rows.push(`<div class="line err">${u}: ${e.message}</div>`);
+        }
+      }
+      out.innerHTML = rows.join('');
+    });
+  </script>
+</Layout>

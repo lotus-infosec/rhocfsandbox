@@ -1,0 +1,66 @@
+---
+import Layout from '../layouts/Layout.astro';
+---
+<Layout title="lb-geo-steering — rhocfsandbox" active="demos">
+  <h1><span class="prompt">demo: load balancing → geo steering</span></h1>
+  <p class="dim">
+    same load balancer as <a href="/lb-failover">/lb-failover</a>. the
+    steering policy is <code>geo</code> with region-based pools. requests
+    from north america (WNAM / ENAM) go to pool-a. requests from anywhere
+    else go to pool-b. no failure required — this is per-request geographic
+    routing.
+  </p>
+
+  <div class="btn-row">
+    <button class="demo" id="fetch-btn">fetch lb-demo.rhocfsandbox.com × 3</button>
+  </div>
+  <div class="log-out" id="log-out"><span class="dim">click to fetch. hop on a vpn to a different region for contrast.</span></div>
+
+  <h2># region_pools map</h2>
+  <table class="kv">
+    <tr><td>WNAM (western north america)</td><td>→ pool_a</td></tr>
+    <tr><td>ENAM (eastern north america)</td><td>→ pool_a</td></tr>
+    <tr><td>WEU / EEU (europe)</td><td>→ pool_b</td></tr>
+    <tr><td>OC (oceania)</td><td>→ pool_b</td></tr>
+    <tr><td>SEAS / NEAS (asia)</td><td>→ pool_b</td></tr>
+    <tr><td>NSAM / SSAM (south america)</td><td>→ pool_b</td></tr>
+    <tr><td>ME / NAF / SAF (middle east + africa)</td><td>→ pool_b</td></tr>
+  </table>
+
+  <h2># how to test the flip</h2>
+  <ol>
+    <li>from a US ip (the button above) → expect <code>origin=a</code></li>
+    <li>connect to a vpn exit in the eu (or asia, etc.)</li>
+    <li>refresh — same button, same url, now returns <code>origin=b</code></li>
+    <li>cloudflare picked the pool at the nearest edge based on where the request landed</li>
+  </ol>
+
+  <h2># why this matters</h2>
+  <ul>
+    <li>latency: send eu traffic to eu origins, us traffic to us origins</li>
+    <li>data residency: keep eu user data at eu origins for gdpr</li>
+    <li>capacity: overflow one region to another with weighted pools</li>
+  </ul>
+
+  <script>
+    const btn = document.getElementById('fetch-btn');
+    const out = document.getElementById('log-out');
+    btn.addEventListener('click', async () => {
+      out.innerHTML = '<span class="dim">fetching...</span>';
+      const rows = [];
+      for (let i = 1; i <= 3; i++) {
+        try {
+          const t0 = performance.now();
+          const res = await fetch('https://lb-demo.rhocfsandbox.com/?t=' + Date.now(), { cache: 'no-store' });
+          const ms = Math.round(performance.now() - t0);
+          const j = await res.json();
+          const cls = j.origin === 'a' ? 'ok' : 'warn';
+          rows.push(`<div class="line ${cls}">req ${i}: origin=${j.origin}  edge_colo=${j.colo}  origin_country=${j.country}  ${ms}ms</div>`);
+        } catch (e) {
+          rows.push(`<div class="line err">req ${i}: ${e.message}</div>`);
+        }
+        out.innerHTML = rows.join('');
+      }
+    });
+  </script>
+</Layout>
