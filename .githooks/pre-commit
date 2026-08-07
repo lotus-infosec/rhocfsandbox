@@ -43,7 +43,7 @@ fi
 
 # Filter out known-safe patterns (demo content, header names, etc).
 FILTERED=$(printf '%s\n' "$SUSPICIOUS" | grep -vE \
-  "sandbox-cfat-X{20,}|API_KEY=sandbox-cfat-X|Bearer realm=|www-authenticate.*Bearer|['\"]bearer['\"]|// bearer|# bearer|imagine an authenticated api rejecting a missing token|plausibly-shaped fake token|shaped like a plausible token|contains no valid material|no valid material|apikey:[[:space:]]|apikey[[:space:]]*=[[:space:]]*\{|GET /api/sensitive-.*apikey|/api/sensitive-.*apikey|- apikey is a plausibly|sensitive-log/apikey|sensitive-block/apikey|4111[[:space:]]?1111[[:space:]]?1111[[:space:]]?1111" \
+  "sandbox-cfat-X{20,}|API_KEY=sandbox-cfat-X|Bearer realm=|www-authenticate.*Bearer|['\"]bearer['\"]|// bearer|# bearer|imagine an authenticated api rejecting a missing token|plausibly-shaped fake token|shaped like a plausible token|contains no valid material|no valid material|apikey:[[:space:]]|apikey[[:space:]]*=[[:space:]]*\{|GET /api/sensitive-.*apikey|/api/sensitive-.*apikey|- apikey is a plausibly|sensitive-log/apikey|sensitive-block/apikey|4111[[:space:]]?1111[[:space:]]?1111[[:space:]]?1111|id[[:space:]]*=[[:space:]]*['\"]66eecd03482a407d85508d80b2c79736|66eecd03482a407d85508d80b2c79736|dc757ebe-aae9-4ed9-a2ce-f6d60a7f6054" \
   || true)
 
 if [ -z "$FILTERED" ]; then

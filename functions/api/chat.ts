@@ -8,7 +8,6 @@ interface Env {
   AI: Ai;
   TURNSTILE_SECRET_KEY: string;
   AI_GATEWAY_ID: string;
-  AI_GATEWAY_ACCOUNT_ID: string;
 }
 
 const SYSTEM = `you are a technical assistant embedded on rhocfsandbox.com,

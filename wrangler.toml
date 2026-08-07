@@ -4,5 +4,44 @@ pages_build_output_dir = "./dist"
 
 # Deploy with:
 #   npm run build && wrangler pages deploy ./dist --project-name=rhocfsandbox
-#
 # Or, if the project already exists and is Git-connected, just push.
+#
+# IMPORTANT: this file is the source of truth for bindings and non-secret env
+# vars on git-triggered builds. Dashboard changes will be overwritten on the
+# next push. Secrets (SITE_JWT_PRIVATE_JWK, TURNSTILE_SECRET_KEY) still live
+# only in the dashboard because wrangler.toml is committed to a public repo.
+
+[vars]
+TURNSTILE_SITE_KEY = "0x4AAAAAAEJgSPTwbmt7L0ea"
+AI_GATEWAY_ID = "site-ai-gateway"
+
+[[kv_namespaces]]
+binding = "KV_COUNTER"
+id = "66eecd03482a407d85508d80b2c79736"
+
+[[d1_databases]]
+binding = "DB_GUESTBOOK"
+database_name = "SITE_guestbook_db"
+database_id = "dc757ebe-aae9-4ed9-a2ce-f6d60a7f6054"
+
+[[durable_objects.bindings]]
+name = "LIVECOUNT"
+class_name = "LiveCount"
+script_name = "site-livecount-do"
+
+[[queues.producers]]
+binding = "QUEUE"
+queue = "site-queue"
+
+[ai]
+binding = "AI"
+
+[[vectorize]]
+binding = "VEC"
+index_name = "site-vectorize-index"
+
+[[workflows]]
+binding = "WORKFLOW"
+name = "demo-workflow"
+class_name = "DemoWorkflow"
+script_name = "site-workflow"
