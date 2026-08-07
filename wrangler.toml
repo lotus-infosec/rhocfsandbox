@@ -40,8 +40,5 @@ binding = "AI"
 binding = "VEC"
 index_name = "site-vectorize-index"
 
-[[workflows]]
-binding = "WORKFLOW"
-name = "demo-workflow"
-class_name = "DemoWorkflow"
-script_name = "site-workflow"
+# NOTE: pages does not support [[workflows]] bindings in wrangler.toml.
+# The workflow demo calls the site-workflow worker via https instead.
